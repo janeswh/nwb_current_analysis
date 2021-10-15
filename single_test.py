@@ -9,18 +9,18 @@ from pynwb import NWBHDF5IO
 io = NWBHDF5IO('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data/JH20211005_c3.nwb', 'r', load_namespaces=True)
 nwbfile = io.read()
 
-# gets the IC timeseries data from the first sweep
-nwbfile.sweep_table.series[0].data[:] 
+# # gets the IC timeseries data from the first sweep
+# nwbfile.sweep_table.series[0].data[:] 
 
 # turn sweep_table into a pandas df
 nwb_df = pd.DataFrame(nwbfile.sweep_table[:]) 
 
-# defines list of sweeps to pull from sweep table, then extracts into subset
-select_sweeps = list(range(11, 21)) 
-subset_nwb_df = nwb_df[nwb_df['sweep_number'].isin(select_sweeps)] 
+# # defines list of sweeps to pull from sweep table, then extracts into subset
+# select_sweeps = list(range(11, 21)) 
+# subset_nwb_df = nwb_df[nwb_df['sweep_number'].isin(select_sweeps)] 
 
 # finds the series indices for VoltageClampSeries data
-b = [series[0] for series in subset_nwb_df['series']]
+b = [series[0] for series in nwb_df['series']]
 
 vc_indices = []
 for index, item in enumerate(b):
@@ -29,7 +29,7 @@ for index, item in enumerate(b):
         vc_indices.append(index)
 
 # puts the VC series data into another df
-vc_sweeps = subset_nwb_df.iloc[vc_indices]
+vc_sweeps = nwb_df.iloc[vc_indices]
 
 # extracts VC series data into df
 raw_series = []
