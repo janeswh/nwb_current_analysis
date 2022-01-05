@@ -1,9 +1,11 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 import pynwb
 import os
 import numpy as np
 from neo.io import IgorIO
 from pynwb import NWBHDF5IO
+import elephant
 
 # gets sweep info for all cells
 sweep_info = pd.read_csv('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables/second_dataset_sweep_info.csv', index_col=0)
@@ -131,16 +133,90 @@ sweeps_dict = {k:v for (k,v) in sweeps_dict.items() if not v.empty}
 
 
 
+''' ################### SET/CHECK THESE PARAMETERS BEFORE RUNNING ################## '''
+lowpass_freq = 500  # Hz
+stim_time = 520     # ms
+post_stim = 250     # ms, amount of time after stimulus to look for max value
+tp_start = 5        # ms, time of start of test pulse
+vm_jump = 10        # mV, test pulse voltage jump
+pre_tp = 3          # ms, amount of time before test pulse start to get baseline
+unit_scaler = -12   # unitless, scaler to get back to A, from pA
+amp_factor = 1      # scaler for making plots in pA
+fs = 25             # kHz, the sampling frequency
+
+baseline_start = 3000
+baseline_end = 6000
+
+stim_conditions = list(sweeps_dict)
+genotype = cell_sweep_info.loc['Genotype']
+
+''' Functions '''
+
+def filter_traces(traces, fs, lowpass_freq):
+    '''
+    add filtered traces attrbute to data object
+    lowpass_freq: frequency in Hz to pass to elephant filter
+    '''
+    traces_filtered = elephant.signal_processing.butter(traces.T, lowpass_freq=lowpass_freq, fs=self.fs * 1000)
+    traces_filtered = pd.DataFrame(traces_filtered).T
+
+    return traces_filtered
 
 
+''' Run the below for each set of stim sweeps, using mean filtered traces below '''
 
+# pick 80%, 2 ms condition to test
+traces = list(sweeps_dict.values())[2]
+mean_traces = traces.mean(axis=1)
 
+time = np.arange(0, len(traces)/fs, 1/fs)
 
+# filter traces
 
+mean_traces_filtered = filter_traces(traces, fs, lowpass_freq)
+traces_filtered = elephant.signal_processing.butter(traces.T, lowpass_freq=lowpass_freq, fs=fs * 1000)
+traces_filtered = pd.DataFrame(traces_filtered).T
+mean_traces_filtered = pd.DataFrame(traces_filtered.mean(axis=1))
+mean_traces_filtered.index = time
 
+# plot sweeps to test
+fig = plt.figure()
+plt.plot(mean_traces_filtered)
 
+# find mean baseline, defined as the last 3s of the sweep
+start = baseline_start * fs
+stop = baseline_end * fs
+window = mean_traces_filtered.iloc[start:stop]
+baseline = window.mean()
 
+# find std of baseline
+start = baseline_start * fs
+stop = baseline_end * fs
+window = mean_traces_filtered.iloc[start:stop]
+std = window.std()
 
+# find current peak
+subtracted_data = mean_traces_filtered - baseline
+post_stim = 100 # 100 ms window after stimulus for finding peak
+start = stim_time * fs
+end = (stim_time + post_stim) * fs
+peak_window = subtracted_data.iloc[start:end]
+polarity = "-"
+
+if polarity == '-':
+    epsc_peaks = peak_window.min()
+elif polarity == '+':
+    epsc_peaks = peak_window.max()
+else:
+    raise ValueError(
+        "polarity must either be + or -"
+    )    
+
+# find latency to peak (one latency from mean trace), in ms
+peak_time = peak_window.idxmin()
+latency = peak_time - stim_time
+
+# find jitter by calculating all the latencies in the set of stim sweeps
 
 
 
