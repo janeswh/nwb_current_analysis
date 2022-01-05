@@ -144,8 +144,6 @@ unit_scaler = -12   # unitless, scaler to get back to A, from pA
 amp_factor = 1      # scaler for making plots in pA
 fs = 25             # kHz, the sampling frequency
 
-baseline_start = 3000
-baseline_end = 6000
 
 stim_conditions = list(sweeps_dict)
 genotype = cell_sweep_info.loc['Genotype']
@@ -157,110 +155,235 @@ def filter_traces(traces, fs, lowpass_freq):
     add filtered traces attrbute to data object
     lowpass_freq: frequency in Hz to pass to elephant filter
     '''
-    traces_filtered = elephant.signal_processing.butter(traces.T, lowpass_freq=lowpass_freq, fs=self.fs * 1000)
+    traces_filtered = elephant.signal_processing.butter(traces.T, lowpass_freq=lowpass_freq, fs=fs * 1000)
     traces_filtered = pd.DataFrame(traces_filtered).T
 
     return traces_filtered
 
 
-''' Run the below for each set of stim sweeps, using mean filtered traces below '''
+def calculate_mean_baseline(data, fs, baseline_start, baseline_end=6000):
+    '''
+    Find the mean baseline in a given time series, defined as the last 3s of the sweep
+    Parameters
+    ----------
+    data: pandas.Series or pandas.DataFrame
+        The time series data for which you want a baseline.
+    fs: int or float
+        The sampling frequency in kHz.
+    baseline_start: int or float
+        The time in ms when baseline starts.
+    baseline_end: int or float
+        The length of the sweep and the time when baseline ends.
+
+    Returns
+    -------
+    baseline: float or pandas.Series
+        The mean baseline over the defined window
+    '''
+    start = baseline_start * fs
+    stop = baseline_end * fs
+    window = data.iloc[start:stop]
+    baseline = window.mean()
+
+    return baseline
+
+
+def calculate_std_baseline(data, fs, baseline_start, baseline_end=6000):
+    '''
+    Find the mean baseline in a given time series
+    Parameters
+    ----------
+    data: pandas.Series or pandas.DataFrame
+        The time series data for which you want a baseline.
+    fs: int or float
+        The sampling frequency in kHz.
+    baseline_start: int or float
+        The time in ms when baseline starts.
+    baseline_end: int or float
+        The length of the sweep and the time when baseline ends.
+
+    Returns
+    -------
+    baseline: float or pandas.Series
+        The mean baseline over the defined window
+    '''
+    start = baseline_start * fs
+    stop = baseline_end * fs
+    window = data.iloc[start:stop]
+    std = window.std()
+
+    return std
+
+
+def calculate_epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='-', index=False):
+    '''
+    Find the peak EPSC value for a pandas.Series or for each sweep (column) of
+    a pandas.DataFrame. This finds the absolute peak value of mean baseline
+    subtracted data.
+
+    Parameters:
+    -----------
+    
+    data: pandas.Series or pandas.DataFrame
+        Time series data with stimulated synaptic response triggered at the
+        same time for each sweep.
+    baseline: scalar or pandas.Series
+        Mean baseline values used to subtract for each sweep.
+    fs: int or float
+        The sampling frequency in kHz. Default is 10 kHz.
+    stim_time: int or float
+        Time in ms at which stimulus is triggered each sweep.
+    polarity: str
+        The expected polarity of the EPSC; negative: '-'; postitive: '+'.
+        Default is '-'.
+    post_stim: int or float
+        Time in ms that marks the end of the sampling window post stimulus.
+        Default is 100 ms.
+    index: bool
+        Determines whether or not to return the peak index in addition to the peak. 
+
+
+    Returns
+    -------
+    epsc_peaks: pandas.Series
+        The absolute peak of mean baseline subtracted time series data.
+    epsc_peak_index: int
+        The time at which the peak occurs
+    peak_window: pandas.DataFrame
+        The window of the time series data where the peak is identified
+    '''
+
+    subtracted_data = data - baseline
+    start = stim_time * fs
+    end = (stim_time + post_stim) * fs
+    peak_window = subtracted_data.iloc[start:end]
+
+    if index is True:
+        if polarity == '-':
+            epsc_peaks = peak_window.min()
+            epsc_peaks_index = peak_window.idxmin()
+        elif polarity == '+':
+            epsc_peaks = peak_window.max()
+            epsc_peaks_index = peak_window.idxmax()
+        else:
+            raise ValueError(
+                "polarity must either be + or -"
+            )    
+        return epsc_peaks, epsc_peaks_index, peak_window
+
+    elif index is False:
+        if polarity == '-':
+            epsc_peaks = peak_window.min()
+        elif polarity == '+':
+            epsc_peaks = peak_window.max()
+        else:
+            raise ValueError(
+                "polarity must either be + or -"
+            )    
+        return epsc_peaks, peak_window
+
+
+def calculate_latency_jitter(window, stim_time, fs, mean_trace=False):
+    '''
+    Find the mean baseline in a given time series
+    Parameters
+    ----------
+    window: pandas.Series or pandas.DataFrame
+        The time series data window in which the peak is found.
+    stim_time: int or float
+        Time in ms at which stimulus is triggered each sweep.
+    fs: int or float
+        The sampling frequency in kHz.
+    mean_trace: bool
+        Determines whether or not to return jitter in addition to latency. 
+
+    Returns
+    -------
+    latency: float or pandas.Series
+        The latency to peak from stim onset, in ms
+    jitter: float or pandas.Series
+        The std of latency to peak (if calculated on multiple traces)
+    '''
+    peak_time = window.idxmin()
+    latency = peak_time - stim_time
+
+    if mean_trace is False:
+        jitter = np.std(latency)
+        return latency, jitter
+    
+    elif mean_trace is True:
+        return latency
+
+
+
+# create dict to hold analysis results for each stim set 
+cell_analysis_dict = {}
+power_curve_df = pd.DataFrame()
 
 # pick 80%, 2 ms condition to test
-traces = list(sweeps_dict.values())[2]
-mean_traces = traces.mean(axis=1)
+# stim_id = 2
+# stim_condition = list(sweeps_dict)[stim_id]
+# traces = list(sweeps_dict.values())[stim_id]
+# mean_trace = traces.mean(axis=1)
 
-time = np.arange(0, len(traces)/fs, 1/fs)
+for stim_id in range(len(list(sweeps_dict))):
+    stim_condition = list(sweeps_dict)[stim_id]
+    traces = list(sweeps_dict.values())[stim_id]
+    mean_trace = traces.mean(axis=1)
+    
 
-# filter traces
+    ''' Run the below for each set of stim sweeps '''
 
-mean_traces_filtered = filter_traces(traces, fs, lowpass_freq)
-traces_filtered = elephant.signal_processing.butter(traces.T, lowpass_freq=lowpass_freq, fs=fs * 1000)
-traces_filtered = pd.DataFrame(traces_filtered).T
-mean_traces_filtered = pd.DataFrame(traces_filtered.mean(axis=1))
-mean_traces_filtered.index = time
+    # filter traces
+    traces_filtered = filter_traces(traces, fs, lowpass_freq)
+    mean_traces_filtered = pd.DataFrame(traces_filtered.mean(axis=1))
 
-# plot sweeps to test
-fig = plt.figure()
-plt.plot(mean_traces_filtered)
+    # convert time to ms
+    time = np.arange(0, len(traces)/fs, 1/fs)
+    mean_traces_filtered.index = time
+    traces_filtered.index = time
 
-# find mean baseline, defined as the last 3s of the sweep
-start = baseline_start * fs
-stop = baseline_end * fs
-window = mean_traces_filtered.iloc[start:stop]
-baseline = window.mean()
+    # plot mean sweeps to test
+    fig = plt.figure()
+    plt.plot(mean_traces_filtered)
 
-# find std of baseline
-start = baseline_start * fs
-stop = baseline_end * fs
-window = mean_traces_filtered.iloc[start:stop]
-std = window.std()
+    # find mean baseline, defined as the last 3s of the sweep
+    baseline = calculate_mean_baseline(traces_filtered, fs, baseline_start=3000, baseline_end=6000)
+    mean_baseline = calculate_mean_baseline(mean_traces_filtered, fs, baseline_start=3000, baseline_end=6000)
 
-# find current peak
-subtracted_data = mean_traces_filtered - baseline
-post_stim = 100 # 100 ms window after stimulus for finding peak
-start = stim_time * fs
-end = (stim_time + post_stim) * fs
-peak_window = subtracted_data.iloc[start:end]
-polarity = "-"
+    # find std of baseline
+    std_baseline = calculate_std_baseline(traces_filtered, fs, baseline_start=3000, baseline_end=6000)
+    mean_std_baseline = calculate_std_baseline(mean_traces_filtered, fs, baseline_start=3000, baseline_end=6000)
 
-if polarity == '-':
-    epsc_peaks = peak_window.min()
-elif polarity == '+':
-    epsc_peaks = peak_window.max()
-else:
-    raise ValueError(
-        "polarity must either be + or -"
-    )    
+    # find current peak
+    current_peaks, peak_window = calculate_epsc_peak(traces_filtered, baseline, fs, stim_time, post_stim=100, polarity='-')
+    mean_trace_peak, mean_peak_window = calculate_epsc_peak(mean_traces_filtered, mean_baseline, fs, stim_time, post_stim=100, polarity='-')
+    current_peaks_mean = current_peaks.mean()
 
-# find latency to peak (one latency from mean trace), in ms
-peak_time = peak_window.idxmin()
-latency = peak_time - stim_time
+    # find latency to peak, in ms
+    latency, jitter = calculate_latency_jitter(peak_window, stim_time, fs, mean_trace=False)
+    mean_trace_latency = calculate_latency_jitter(mean_peak_window, stim_time, fs, mean_trace=True)
+    latency_mean = latency.mean()
 
-# find jitter by calculating all the latencies in the set of stim sweeps
+    # collects measurements into cell dict, nested dict for each stim condition
+    stim_dict = {}
+    stim_dict['Raw Peaks (pA)'] = current_peaks.tolist()
+    stim_dict['Mean Raw Peaks (pA)'] = current_peaks_mean
+    stim_dict['Mean Trace Peak (pA)'] = mean_trace_peak[0]
+    stim_dict['Peak Latencies (ms)'] = latency.tolist()
+    stim_dict['Peak Jitter'] = jitter
+    stim_dict['Mean Peak Latency (ms)'] = latency_mean
+    stim_dict['Mean Trace Latency (ms)'] = mean_trace_latency[0]
 
+    cell_analysis_dict[stim_condition] = stim_dict
 
-
-
-
-
-
-
-
-
-
+    # collects peaks into power_curve_df, column for each stim condition
+    stim_peaks = pd.DataFrame(current_peaks)
+    stim_peaks.columns = [stim_condition]
+    power_curve_df = pd.concat([power_curve_df, stim_peaks], axis=1)
 
 
-
-
-
-
-
-# import clamp_ephys
-# import pandas as pd
-# import os
-# import scipy
-# import matplotlib
-# import matplotlib.pyplot as plt
-
-# '''####################### SET THE PROPER PATH YOU WANT ########################### '''
-# paths = clamp_ephys.workflows.file_structure('local', 'MMZ_STC_dataset')
-# tables = paths.tables
-# figures = paths.figures
-
-
-
-
-
-
-
-
-
-
-
-# data_raw = IgorIO(filename='/home/jhuang/Documents/phd_projects/Injected_GC_data_060820/VC_pairs/data/p2/JH200303_c1_light100.ibw')
-# data_neo = data_raw.read_block()
-# data_neo_array = data_neo.segments[0].analogsignals[0]
-# data_df = pd.DataFrame(data_neo_array.as_array().squeeze())
+# export analysis values to csv
 
 
 
