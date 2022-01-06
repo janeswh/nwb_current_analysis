@@ -11,7 +11,7 @@ import elephant
 sweep_info = pd.read_csv('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables/second_dataset_sweep_info.csv', index_col=0)
 
 # reads in NWB file
-io = NWBHDF5IO('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data/JH20210922_c3.nwb', 'r', load_namespaces=True)
+io = NWBHDF5IO('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data/JH20210923_c2.nwb', 'r', load_namespaces=True)
 nwbfile = io.read()
 
 # # gets the IC timeseries data from the first sweep
@@ -50,7 +50,7 @@ raw_df.columns = vc_sweeps.sweep_number
 
 
 # gets sweep info for one cell, drops empty values
-file = 'JH20210922_c3.nwb'
+file = 'JH20210923_c2.nwb'
 file_split = file.split('.')
 cell_name = file_split[0]
 
@@ -350,7 +350,7 @@ def calculate_timetopeak(window, stim_time, fs, mean_trace=False):
     return time_to_peak
     
 
-def calculate_responses(baseline_std, peak_mean, latency, threshold=None):
+def calculate_responses(baseline_std, peak_mean, timetopeak, threshold=None):
         '''
         Decides on whether there is a response above 2x, 3x above the baseline std,
         or a user-selectable cutoff.
@@ -360,8 +360,8 @@ def calculate_responses(baseline_std, peak_mean, latency, threshold=None):
             The std of the baseline of the mean filtered trace.
         peak_mean: int or float
             The current peak of the mean filtered trace.
-        latency: int or float
-            The latency of stimulus onset.
+        timetopeak: int or float
+            The time to current peak. Usually uses the average time to peak, averaged from all sweeps.
         threshold: int, float (optional)
             If supplied, will provide another threshold in addition to the 2x and 3x
             above the baseline std to threshold the response checker.
@@ -371,12 +371,11 @@ def calculate_responses(baseline_std, peak_mean, latency, threshold=None):
             A DataFrame with bool for responses above the threshold in the column header.
         '''
         # takes values out of series format to enable boolean comparison
-        latency = latency[0]
         baseline_std = baseline_std[0]
         peak_mean = peak_mean[0]
         
-        response_2x = abs(peak_mean) > baseline_std * 2 and latency < 5
-        response_3x = abs(peak_mean) > baseline_std * 3 and latency < 5
+        response_2x = abs(peak_mean) > baseline_std * 2 and timetopeak < 10
+        response_3x = abs(peak_mean) > baseline_std * 3 and timetopeak < 10
 
         if threshold is None:
             responses = pd.DataFrame({'Response 2x STD': response_2x,
@@ -452,7 +451,7 @@ for stim_id in range(len(list(sweeps_dict))):
     time_to_peak_mean = time_to_peak.mean()
 
     # determines whether the cell is responding, using mean_trace_filtered
-    responses = calculate_responses(mean_std_baseline, mean_trace_peak, mean_trace_latency)
+    responses = calculate_responses(mean_std_baseline, mean_trace_peak, time_to_peak_mean)
 
     # collects measurements into cell dict, nested dict for each stim condition
     stim_dict = {}
