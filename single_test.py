@@ -50,7 +50,7 @@ raw_df.columns = vc_sweeps.sweep_number
 
 
 # gets sweep info for one cell, drops empty values
-file = 'JH20210922_c3'
+file = 'JH20210922_c3.nwb'
 file_split = file.split('.')
 cell_name = file_split[0]
 
@@ -161,9 +161,9 @@ def filter_traces(traces, fs, lowpass_freq):
     return traces_filtered
 
 
-def calculate_mean_baseline(data, fs, baseline_start, baseline_end=6000):
+def calculate_mean_baseline(data, fs, baseline_start=100, baseline_end=450):
     '''
-    Find the mean baseline in a given time series, defined as the last 3s of the sweep
+    Find the mean baseline in a given time series, defined the 100-450 ms window before stimulus onset
     Parameters
     ----------
     data: pandas.Series or pandas.DataFrame
@@ -188,7 +188,7 @@ def calculate_mean_baseline(data, fs, baseline_start, baseline_end=6000):
     return baseline
 
 
-def calculate_std_baseline(data, fs, baseline_start, baseline_end=6000):
+def calculate_std_baseline(data, fs, baseline_start=100, baseline_end=450):
     '''
     Find the mean baseline in a given time series
     Parameters
@@ -283,7 +283,47 @@ def calculate_epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='
         return epsc_peaks, peak_window
 
 
-def calculate_latency_jitter(window, stim_time, fs, mean_trace=False):
+def calculate_latency_jitter(window, epsc_peaks, stim_time, fs, mean_trace=False):
+    '''
+    Finds the latency of response onset and the jitter of latency.
+    Parameters
+    ----------
+    window: pandas.Series or pandas.DataFrame
+        The time series data window in which the peak is found.
+    epsc_peaks: float or pandas.Series
+        The absolute peak of mean baseline subtracted time series data.
+    stim_time: int or float
+        Time in ms at which stimulus is triggered each sweep.
+    fs: int or float
+        The sampling frequency in kHz.
+    mean_trace: bool
+        Determines whether or not to return jitter in addition to latency. 
+
+    Returns
+    -------
+    latency: float or pandas.Series
+        The latency of response onset, defined as 5% of epsc_peaks
+    jitter: float or pandas.Series
+        The std of latency to response onset (if calculated on multiple traces)
+    '''
+    onset_amp = abs(epsc_peaks * 0.05)
+    latency = []
+    for sweep in range(len(window.columns)):
+        sweep_window = abs(window.iloc[:,sweep])
+        onset_idx = np.argmax(sweep_window >= onset_amp[sweep])
+        onset_time = sweep_window.index[onset_idx]
+        sweep_latency = onset_time - stim_time
+        latency.append(sweep_latency)           
+    
+    if mean_trace is False:
+        jitter = np.std(latency)
+        return latency, jitter
+
+    elif mean_trace is True:
+        return latency
+        
+
+def calculate_timetopeak(window, stim_time, fs, mean_trace=False):
     '''
     Find the mean baseline in a given time series
     Parameters
@@ -305,20 +345,60 @@ def calculate_latency_jitter(window, stim_time, fs, mean_trace=False):
         The std of latency to peak (if calculated on multiple traces)
     '''
     peak_time = window.idxmin()
-    latency = peak_time - stim_time
+    time_to_peak = peak_time - stim_time
 
-    if mean_trace is False:
-        jitter = np.std(latency)
-        return latency, jitter
+    return time_to_peak
     
-    elif mean_trace is True:
-        return latency
+
+def calculate_responses(baseline_std, peak_mean, latency, threshold=None):
+        '''
+        Decides on whether there is a response above 2x, 3x above the baseline std,
+        or a user-selectable cutoff.
+        Parameters
+        ----------
+        baseline_std: int or float
+            The std of the baseline of the mean filtered trace.
+        peak_mean: int or float
+            The current peak of the mean filtered trace.
+        latency: int or float
+            The latency of stimulus onset.
+        threshold: int, float (optional)
+            If supplied, will provide another threshold in addition to the 2x and 3x
+            above the baseline std to threshold the response checker.
+        Returns
+        -------
+        esponses: pd.DataFrame(bool)
+            A DataFrame with bool for responses above the threshold in the column header.
+        '''
+        # takes values out of series format to enable boolean comparison
+        latency = latency[0]
+        baseline_std = baseline_std[0]
+        peak_mean = peak_mean[0]
+        
+        response_2x = abs(peak_mean) > baseline_std * 2 and latency < 5
+        response_3x = abs(peak_mean) > baseline_std * 3 and latency < 5
+
+        if threshold is None:
+            responses = pd.DataFrame({'Response 2x STD': response_2x,
+                                           'Response 3x STD': response_3x},
+                                           index=range(1))
+        else:
+            response_threshold = abs(peak_mean) > baseline_std * threshold
+            response_string = 'Response {}x STD'.format(threshold)
+
+            responses = pd.DataFrame({'Response 2x STD': response_2x,
+                                           'Response 3x STD': response_3x,
+                                           response_string: response_threshold},
+                                           index=range(1))
+
+        return responses
 
 
 
 # create dict to hold analysis results for each stim set 
 cell_analysis_dict = {}
 power_curve_df = pd.DataFrame()
+
 
 # pick 80%, 2 ms condition to test
 # stim_id = 2
@@ -329,51 +409,67 @@ power_curve_df = pd.DataFrame()
 for stim_id in range(len(list(sweeps_dict))):
     stim_condition = list(sweeps_dict)[stim_id]
     traces = list(sweeps_dict.values())[stim_id]
-    mean_trace = traces.mean(axis=1)
+    # mean_trace = traces.mean(axis=1)
     
 
     ''' Run the below for each set of stim sweeps '''
 
     # filter traces
     traces_filtered = filter_traces(traces, fs, lowpass_freq)
-    mean_traces_filtered = pd.DataFrame(traces_filtered.mean(axis=1))
+    mean_trace_filtered = pd.DataFrame(traces_filtered.mean(axis=1))
 
     # convert time to ms
     time = np.arange(0, len(traces)/fs, 1/fs)
-    mean_traces_filtered.index = time
+    mean_trace_filtered.index = time
     traces_filtered.index = time
 
     # plot mean sweeps to test
     fig = plt.figure()
-    plt.plot(mean_traces_filtered)
+    plt.plot(mean_trace_filtered)
 
     # find mean baseline, defined as the last 3s of the sweep
-    baseline = calculate_mean_baseline(traces_filtered, fs, baseline_start=3000, baseline_end=6000)
-    mean_baseline = calculate_mean_baseline(mean_traces_filtered, fs, baseline_start=3000, baseline_end=6000)
+    baseline = calculate_mean_baseline(traces_filtered, fs, baseline_start=100, baseline_end=450)
+    mean_baseline = calculate_mean_baseline(mean_trace_filtered, fs, baseline_start=100, baseline_end=450)
 
     # find std of baseline
-    std_baseline = calculate_std_baseline(traces_filtered, fs, baseline_start=3000, baseline_end=6000)
-    mean_std_baseline = calculate_std_baseline(mean_traces_filtered, fs, baseline_start=3000, baseline_end=6000)
+    std_baseline = calculate_std_baseline(traces_filtered, fs, baseline_start=100, baseline_end=450)
+    mean_std_baseline = calculate_std_baseline(mean_trace_filtered, fs, baseline_start=100, baseline_end=450)
 
     # find current peak
     current_peaks, peak_window = calculate_epsc_peak(traces_filtered, baseline, fs, stim_time, post_stim=100, polarity='-')
-    mean_trace_peak, mean_peak_window = calculate_epsc_peak(mean_traces_filtered, mean_baseline, fs, stim_time, post_stim=100, polarity='-')
+    mean_trace_peak, mean_peak_window = calculate_epsc_peak(mean_trace_filtered, mean_baseline, fs, stim_time, post_stim=100, polarity='-')
     current_peaks_mean = current_peaks.mean()
 
-    # find latency to peak, in ms
-    latency, jitter = calculate_latency_jitter(peak_window, stim_time, fs, mean_trace=False)
-    mean_trace_latency = calculate_latency_jitter(mean_peak_window, stim_time, fs, mean_trace=True)
-    latency_mean = latency.mean()
+
+    # find latency to response onset and jitter, in ms
+    latency, jitter = calculate_latency_jitter(peak_window, current_peaks, stim_time, fs, mean_trace=False)
+    mean_trace_latency = calculate_latency_jitter(mean_peak_window, mean_trace_peak, stim_time, fs, mean_trace=True)
+    latency_mean = np.asarray(latency).mean()
+
+    # find time to peak, in ms
+    time_to_peak = calculate_timetopeak(peak_window, stim_time, fs, mean_trace=False)
+    mean_trace_time_to_peak = calculate_timetopeak(mean_peak_window, stim_time, fs, mean_trace=True)
+    time_to_peak_mean = time_to_peak.mean()
+
+    # determines whether the cell is responding, using mean_trace_filtered
+    responses = calculate_responses(mean_std_baseline, mean_trace_peak, mean_trace_latency)
 
     # collects measurements into cell dict, nested dict for each stim condition
     stim_dict = {}
     stim_dict['Raw Peaks (pA)'] = current_peaks.tolist()
     stim_dict['Mean Raw Peaks (pA)'] = current_peaks_mean
     stim_dict['Mean Trace Peak (pA)'] = mean_trace_peak[0]
-    stim_dict['Peak Latencies (ms)'] = latency.tolist()
-    stim_dict['Peak Jitter'] = jitter
-    stim_dict['Mean Peak Latency (ms)'] = latency_mean
-    stim_dict['Mean Trace Latency (ms)'] = mean_trace_latency[0]
+    stim_dict['Onset Latencies (ms)'] = latency
+    stim_dict['Onset Jitter'] = jitter
+    stim_dict['Mean Onset Latency (ms)'] = latency_mean
+    stim_dict['Mean Trace Onset Latency (ms)'] = mean_trace_latency[0]
+    stim_dict['Time to Peaks (ms)'] = time_to_peak.tolist()
+    stim_dict['Mean Time to Peak (ms)'] = time_to_peak_mean
+    stim_dict['Mean Trace Time to Peak (ms)'] = mean_trace_time_to_peak[0]
+
+
+    stim_dict['Response 2x STD'] = responses['Response 2x STD'][0]
+    stim_dict['Response 3x STD'] = responses['Response 3x STD'][0]
 
     cell_analysis_dict[stim_condition] = stim_dict
 
@@ -381,7 +477,6 @@ for stim_id in range(len(list(sweeps_dict))):
     stim_peaks = pd.DataFrame(current_peaks)
     stim_peaks.columns = [stim_condition]
     power_curve_df = pd.concat([power_curve_df, stim_peaks], axis=1)
-
 
 # export analysis values to csv
 
