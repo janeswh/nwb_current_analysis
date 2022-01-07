@@ -6,12 +6,16 @@ import numpy as np
 from neo.io import IgorIO
 from pynwb import NWBHDF5IO
 import elephant
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from scipy.stats import sem
 
 # gets sweep info for all cells
 sweep_info = pd.read_csv('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables/second_dataset_sweep_info.csv', index_col=0)
 
 # reads in NWB file
-io = NWBHDF5IO('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data/JH20210923_c2.nwb', 'r', load_namespaces=True)
+io = NWBHDF5IO('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data/JH20211103_c3.nwb', 'r', load_namespaces=True)
 nwbfile = io.read()
 
 # # gets the IC timeseries data from the first sweep
@@ -50,7 +54,7 @@ raw_df.columns = vc_sweeps.sweep_number
 
 
 # gets sweep info for one cell, drops empty values
-file = 'JH20210923_c2.nwb'
+file = 'JH20211103_c3.nwb'
 file_split = file.split('.')
 cell_name = file_split[0]
 
@@ -461,9 +465,11 @@ for stim_id in range(len(list(sweeps_dict))):
     stim_dict['Onset Latencies (ms)'] = latency
     stim_dict['Onset Jitter'] = jitter
     stim_dict['Mean Onset Latency (ms)'] = latency_mean
+    stim_dict['Onset SEM'] = sem(latency)
     stim_dict['Mean Trace Onset Latency (ms)'] = mean_trace_latency[0]
-    stim_dict['Time to Peaks (ms)'] = time_to_peak.tolist()
+    stim_dict['Time to Peaks (ms)'] = time_to_peak.tolist()    
     stim_dict['Mean Time to Peak (ms)'] = time_to_peak_mean
+    stim_dict['Time to Peak SEM'] = sem(time_to_peak)
     stim_dict['Mean Trace Time to Peak (ms)'] = mean_trace_time_to_peak[0]
 
 
@@ -481,15 +487,59 @@ for stim_id in range(len(list(sweeps_dict))):
 
 
 
+''' The below makes power curve stats and graph '''
+
+# how to convert column names to tuples, then can just pass tuples through to multiindex
+tuples = [tuple(condition.split(",")) for condition in power_curve_df.columns]
+power_curve_df.columns = pd.MultiIndex.from_tuples(tuples)
+power_curve_df.index.names = ['Sweep']
+power_curve_df = power_curve_df.T
+
+# get mean response and SEM for plotting
+power_curve_stats = pd.DataFrame()
+power_curve_stats['Mean Response Amplitude (pA)'] = power_curve_df.mean(axis=1)
+power_curve_stats['SEM'] = power_curve_df.sem(axis=1)
+power_curve_df = pd.concat([power_curve_df, power_curve_stats], axis=1) # for output to csv
+
+power_curve_stats.reset_index(inplace=True)
+power_curve_stats = power_curve_stats.rename(columns={'level_0':'Light Intensity', 'level_1':'Light Duration'})
+
+
+# plot power curve, with each light pulse duration as a different series
+fig = px.line(power_curve_stats, x=power_curve_stats['Light Intensity'], y=power_curve_stats['Mean Response Amplitude (pA)'], 
+    color='Light Duration', error_y=power_curve_stats['SEM'], markers=True)
+fig['layout']['yaxis']['autorange'] = "reversed"
+fig['layout']['xaxis']['autorange'] = "reversed"
+
+fig.show()
+
+
+''' The below makes response stats plot '''
+
+cell_analysis_df = pd.DataFrame(cell_analysis_dict).T
+cell_analysis_df.index = pd.MultiIndex.from_tuples(tuples)
 
 
 
+sweep_stats_plt = cell_analysis_df[['Onset Jitter', 'Mean Onset Latency (ms)', 'Mean Trace Onset Latency (ms)',
+    'Mean Time to Peak (ms)', 'Mean Trace Time to Peak (ms)']].copy()
 
 
 
+# add sem to the various measures
 
 
+sweep_stats_plt.reset_index(inplace=True)
+power_curve_stats = power_curve_stats.rename(columns={'level_0':'Light Intensity', 'level_1':'Light Duration'})
 
+
+# plot response stats as subplots, with each light pulse duration as a different series
+# onset latencies (raw data pts) + SEM
+# onset jitter
+# mean trace onset latency
+# time to peak (raw data pts) + SEM
+# mean trace time to peak
+# combine with power curve graph?
 
 
 
