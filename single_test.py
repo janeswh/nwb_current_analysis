@@ -9,7 +9,12 @@ import elephant
 import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 from scipy.stats import sem
+
+import plotly.io as pio
+pio.renderers.default = "browser"
 
 # gets sweep info for all cells
 sweep_info = pd.read_csv('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables/second_dataset_sweep_info.csv', index_col=0)
@@ -483,6 +488,7 @@ for stim_id in range(len(list(sweeps_dict))):
     stim_peaks.columns = [stim_condition]
     power_curve_df = pd.concat([power_curve_df, stim_peaks], axis=1)
 
+
 # export analysis values to csv
 
 
@@ -514,15 +520,38 @@ fig['layout']['xaxis']['autorange'] = "reversed"
 fig.show()
 
 
+
+
+
+
+
+
+
 ''' The below makes response stats plot '''
 
 cell_analysis_df = pd.DataFrame(cell_analysis_dict).T
 cell_analysis_df.index = pd.MultiIndex.from_tuples(tuples)
 
 
+sweep_analysis_values =  cell_analysis_df[['Onset Latencies (ms)', 'Time to Peaks (ms)']].copy()
+sweep_analysis_values = sweep_analysis_values.explode(['Onset Latencies (ms)', 'Time to Peaks (ms)'])
 
-sweep_stats_plt = cell_analysis_df[['Onset Jitter', 'Mean Onset Latency (ms)', 'Mean Trace Onset Latency (ms)',
-    'Mean Time to Peak (ms)', 'Mean Trace Time to Peak (ms)']].copy()
+sweep_analysis_values.reset_index(inplace=True)
+sweep_analysis_values = sweep_analysis_values.rename(columns={'level_0':'Light Intensity', 'level_1':'Light Duration'})
+
+cell_analysis_df.reset_index(inplace=True)
+cell_analysis_df = cell_analysis_df.rename(columns={'level_0':'Light Intensity', 'level_1':'Light Duration'})
+
+
+
+
+
+
+
+
+
+# sweep_stats_plt = cell_analysis_df[['Onset Jitter', 'Mean Onset Latency (ms)', 'Mean Trace Onset Latency (ms)',
+#     'Mean Time to Peak (ms)', 'Mean Trace Time to Peak (ms)']].copy()
 
 
 
@@ -541,7 +570,128 @@ power_curve_stats = power_curve_stats.rename(columns={'level_0':'Light Intensity
 # mean trace time to peak
 # combine with power curve graph?
 
+''' Making stats plots using plotly express '''
+
+fig2 = px.box(sweep_analysis_values, x="Light Intensity", y="Onset Latencies (ms)", 
+    color='Light Duration')
+fig2.show()
+
+fig3 = px.box(sweep_analysis_values, x="Light Intensity", y="Time to Peaks (ms)", 
+    color='Light Duration')
+fig3.show()
 
 
 
 
+
+
+
+
+''' do a loop through available durations and intensities instead of hard
+coding. maybe need MultiIndex after all?? Put power curve + all stats measurements in subplots'''
+
+intensities = sweep_analysis_values['Light Intensity'].unique()
+durations = sweep_analysis_values['Light Duration'].unique()
+
+
+color = px.colors.qualitative.Plotly
+fig = make_subplots(
+    rows=3, cols=2,
+    x_title = "Light Intensity (%)"
+    )
+
+
+
+for count, duration in enumerate(durations):
+
+    error = power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['SEM']].squeeze()
+    
+    # power curve
+    fig.add_trace(go.Scatter(
+        x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
+        y=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Mean Response Amplitude (pA)']].squeeze(), 
+        name=duration,
+        error_y=dict(
+            type='data',
+            array=error.values,
+            visible=True),     
+        mode='lines+markers',
+        line=dict(color=color[count])
+        ),
+        row=1, col=1
+    )
+    
+    # onset latency
+    fig.add_trace(go.Box(
+        x=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Light Intensity']].squeeze(),
+        y=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Onset Latencies (ms)']].squeeze(),
+        name=duration,
+        line=dict(color=color[count]),
+        showlegend=False,
+        ),
+        row=1, col=2
+    )
+
+    # onset jitter
+    fig.add_trace(go.Bar(
+        x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
+        y=cell_analysis_df.loc[cell_analysis_df['Light Duration']==duration, ['Onset Jitter']].squeeze(),
+        name=duration,
+        marker_color=color[count],
+        showlegend=False,
+        ),
+        row=2, col=1
+    )
+    
+    # mean trace onset latency
+    fig.add_trace(go.Bar(
+        x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
+        y=cell_analysis_df.loc[cell_analysis_df['Light Duration']==duration, ['Mean Trace Onset Latency (ms)']].squeeze(),
+        name=duration,
+        marker_color=color[count],
+        showlegend=False,
+        ),
+        row=2, col=2
+    )
+
+
+    # time to peak
+    fig.add_trace(go.Box(
+        x=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Light Intensity']].squeeze(),
+        y=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Time to Peaks (ms)']].squeeze(),
+        name=duration,
+        line=dict(color=color[count]),
+        showlegend=False,
+        ),
+        row=3, col=1
+    )
+
+    # mean trace time to peak
+    fig.add_trace(go.Bar(
+        x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
+        y=cell_analysis_df.loc[cell_analysis_df['Light Duration']==duration, ['Mean Trace Time to Peak (ms)']].squeeze(),
+        name=duration,
+        marker_color=color[count],
+        showlegend=False,
+        ),
+        row=3, col=2
+    )
+
+    # Update xaxis properties
+    fig.update_xaxes(row=1, col=1, autorange='reversed')
+
+
+    # Update yaxis properties
+    fig.update_yaxes(title_text="Response Amplitude (pA)", row=1, col=1, autorange='reversed')
+    fig.update_yaxes(title_text="Onset Latency (ms)", row=1, col=2)
+    fig.update_yaxes(title_text="Onset Jitter", row=2, col=1)
+    fig.update_yaxes(title_text="Mean Trace Onset Latency (ms)", row=2, col=2)
+    fig.update_yaxes(title_text="Time to Peak (ms)", row=3, col=1)
+    fig.update_yaxes(title_text="Mean Trace Time to Peak (ms)", row=3, col=2)
+
+fig.update_layout(
+    #yaxis_title='Onset Latency (ms)',
+    boxmode='group' # group together boxes of the different traces for each value of x
+)
+
+fig.show()
