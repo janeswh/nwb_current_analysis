@@ -29,17 +29,25 @@ def main(csvfile, nwbfile):
     io = NWBHDF5IO(nwbfile, 'r', load_namespaces=True)
     nwbfile = io.read()
 
-    # # gets the IC timeseries data from the first sweep
-    # nwbfile.sweep_table.series[0].data[:] 
-
+    #0 initializes JaneCell class
     cell = JaneCell(sweep_info, nwbfile)
     
-
+    #1 drops depolarized and esc AP sweeps from VC data if applicable
     cell.drop_sweeps()
+
+    #2 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
     cell.make_sweeps_dict()
+
+    #3 runs stats on sweeps and creates a dict for each stim condition
     cell.make_cell_analysis_dict()
+
+    #4 calculates power curve for plotting
     cell.make_power_curve_stats_df()
+
+    #5 calculates response stats for plotting
     cell.make_stats_df()
+
+    #6 makes plots for power curve and response stats
     summary_plots = cell.graph_curve_stats()
 
 
