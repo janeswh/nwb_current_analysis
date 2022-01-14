@@ -1,0 +1,51 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import pynwb
+import os
+import numpy as np
+from neo.io import IgorIO
+from pynwb import NWBHDF5IO
+import elephant
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+from scipy.stats import sem
+
+import plotly.io as pio
+pio.renderers.default = "browser"
+
+from acq_parameters import *
+import pdb
+from single_test import JaneCell
+
+def main(csvfile, nwbfile):
+    
+    # gets sweep info for all cells
+    sweep_info = pd.read_csv(csvfile, index_col=0)
+
+    # reads in NWB file
+    io = NWBHDF5IO(nwbfile, 'r', load_namespaces=True)
+    nwbfile = io.read()
+
+    # # gets the IC timeseries data from the first sweep
+    # nwbfile.sweep_table.series[0].data[:] 
+
+    cell = JaneCell(sweep_info, nwbfile)
+    
+
+    cell.drop_sweeps()
+    cell.make_sweeps_dict()
+    cell.make_cell_analysis_dict()
+    cell.make_power_curve_stats_df()
+    cell.make_stats_df()
+    summary_plots = cell.graph_curve_stats()
+
+
+
+if __name__ == "__main__":
+    csvfile = '/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables/second_dataset_sweep_info.csv'
+    nwbfile = '/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data/JH20211103_c3.nwb'
+    main(csvfile, nwbfile)
+    print("I'm done")
