@@ -21,8 +21,6 @@ import pdb
 
 
 
-
-
 class JaneCell(object):
     def __init__(self, sweep_info, nwbfile):
         self.sweep_info = sweep_info
@@ -45,10 +43,6 @@ class JaneCell(object):
     def initialize_cell(self):
         # turn sweep_table into a pandas df
         nwb_df = pd.DataFrame(self.nwbfile.sweep_table[:]) 
-
-        # # defines list of sweeps to pull from sweep table, then extracts into subset
-        # select_sweeps = list(range(11, 21)) 
-        # subset_nwb_df = nwb_df[nwb_df['sweep_number'].isin(select_sweeps)] 
 
         # finds the series indices for VoltageClampSeries data
         b = [series[0] for series in nwb_df['series']]
@@ -137,15 +131,7 @@ class JaneCell(object):
             stim_name = stim_sweep_info.index[i]
             stim_range = stim_sweep_info.iloc[i].str.split(',')[0]
             stim_sweeps = []
-            # if len(stim_range) == 1:
-            #     if '-' not in stim_range[0]:
-            #         stim_sweeps.append(int(stim_range[0]))
-            #     else:
-            #         r_start = int(stim_range[0].split('-')[0])
-            #         r_end = int(stim_range[0].split('-')[1])+1
-            #         all_sweeps = list(range(r_start, r_end))
-            #         stim_sweeps.extend(all_sweeps)
-            # else:
+
             for j in range(len(stim_range)):
                 if '-' in stim_range[j]:
                     r_start = int(stim_range[j].split('-')[0])
@@ -469,13 +455,6 @@ class JaneCell(object):
         cell_analysis_dict = {}
         power_curve_df = pd.DataFrame()
 
-
-        # pick 80%, 2 ms condition to test
-        # stim_id = 2
-        # stim_condition = list(sweeps_dict)[stim_id]
-        # traces = list(sweeps_dict.values())[stim_id]
-        # mean_trace = traces.mean(axis=1)
-
         for stim_id in range(len(list(self.sweeps_dict))):
             stim_condition, current_peaks, stim_dict = self.calculate_stim_stats(stim_id)
             cell_analysis_dict[stim_condition] = stim_dict
@@ -518,21 +497,6 @@ class JaneCell(object):
         self.power_curve_stats = power_curve_stats
 
 
-
-    # ''' below is plotly express'''
-    # # plot power curve, with each light pulse duration as a different series
-    # fig = px.line(power_curve_stats, x=power_curve_stats['Light Intensity'], y=power_curve_stats['Mean Response Amplitude (pA)'], 
-    #     color='Light Duration', error_y=power_curve_stats['SEM'], markers=True)
-    # fig['layout']['yaxis']['autorange'] = "reversed"
-    # fig['layout']['xaxis']['autorange'] = "reversed"
-
-    # fig.show()
-
-
-
-
-
-
     def make_stats_df(self):
 
         ''' 
@@ -555,43 +519,6 @@ class JaneCell(object):
         self.sweep_analysis_values = sweep_analysis_values
         self.cell_analysis_df = cell_analysis_df
         
-
-
-
-
-
-
-    # sweep_stats_plt = cell_analysis_df[['Onset Jitter', 'Mean Onset Latency (ms)', 'Mean Trace Onset Latency (ms)',
-    #     'Mean Time to Peak (ms)', 'Mean Trace Time to Peak (ms)']].copy()
-
-
-
-    # add sem to the various measures
-
-
-    # sweep_stats_plt.reset_index(inplace=True)
-    # power_curve_stats = power_curve_stats.rename(columns={'level_0':'Light Intensity', 'level_1':'Light Duration'})
-
-
-    # plot response stats as subplots, with each light pulse duration as a different series
-    # onset latencies (raw data pts) + SEM
-    # onset jitter
-    # mean trace onset latency
-    # time to peak (raw data pts) + SEM
-    # mean trace time to peak
-    # combine with power curve graph?
-
-    # ''' Making stats plots using plotly express '''
-
-    # fig2 = px.box(sweep_analysis_values, x="Light Intensity", y="Onset Latencies (ms)", 
-    #     color='Light Duration')
-    # fig2.show()
-
-    # fig3 = px.box(sweep_analysis_values, x="Light Intensity", y="Time to Peaks (ms)", 
-    #     color='Light Duration')
-    # fig3.show()
-
-
 
     def graph_curve_stats(self):
         '''
