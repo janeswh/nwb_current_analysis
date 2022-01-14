@@ -332,15 +332,15 @@ def calculate_latency_jitter(window, epsc_peaks, stim_time, fs, mean_trace=False
         return latency
         
 
-def calculate_timetopeak(window, stim_time, fs, mean_trace=False):
+def calculate_timetopeak(window, response_onset, fs, mean_trace=False):
     '''
     Find the mean baseline in a given time series
     Parameters
     ----------
     window: pandas.Series or pandas.DataFrame
         The time series data window in which the peak is found.
-    stim_time: int or float
-        Time in ms at which stimulus is triggered each sweep.
+    response_onset: int or float
+        Time in ms at which response onset occurs (also response latency).
     fs: int or float
         The sampling frequency in kHz.
     mean_trace: bool
@@ -455,8 +455,8 @@ for stim_id in range(len(list(sweeps_dict))):
     latency_mean = np.asarray(latency).mean()
 
     # find time to peak, in ms
-    time_to_peak = calculate_timetopeak(peak_window, stim_time, fs, mean_trace=False)
-    mean_trace_time_to_peak = calculate_timetopeak(mean_peak_window, stim_time, fs, mean_trace=True)
+    time_to_peak = calculate_timetopeak(peak_window, latency, fs, mean_trace=False)
+    mean_trace_time_to_peak = calculate_timetopeak(mean_peak_window, latency, fs, mean_trace=True)
     time_to_peak_mean = time_to_peak.mean()
 
     # determines whether the cell is responding, using mean_trace_filtered
