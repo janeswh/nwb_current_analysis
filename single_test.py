@@ -541,7 +541,7 @@ class JaneCell(object):
         durations = sweep_analysis_values['Light Duration'].unique()
 
 
-        color = px.colors.qualitative.Plotly
+        color = ['#0859C6', '#10A5F5', '#00DBFF']
         fig = make_subplots(
             rows=3, cols=2,
             x_title = "Light Intensity (%)"
@@ -672,9 +672,8 @@ class JaneCell(object):
         intensities = sweep_analysis_values['Light Intensity'].unique()
         durations = sweep_analysis_values['Light Duration'].unique()
 
-        color = px.colors.qualitative.Plotly
-
-        
+        # blue colors
+        color = ['#0859C6', '#10A5F5', '#00DBFF']
 
         stim_columns = self.mean_trace_df.loc[:,['Light Intensity', 'Light Duration']]
         traces_to_plot = self.mean_trace_df.loc[:,500.00:700.00] # only plots first 400-1000 ms
@@ -718,8 +717,8 @@ class JaneCell(object):
         
         fig.update_layout(legend_title_text='Light Duration')
 
+        
         pdb.set_trace()
-
         
 
         fig.show()

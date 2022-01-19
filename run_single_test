@@ -48,7 +48,7 @@ def main(csvfile, nwbfile):
     cell.make_stats_df()
 
     #6 makes plots for power curve and response stats
-    #summary_plots = cell.graph_curve_stats()
+    summary_plots = cell.graph_curve_stats()
     cell.make_mean_traces_df()
     cell.graph_response_trace()
 
