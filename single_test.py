@@ -28,14 +28,11 @@ class JaneCell(object):
         self.raw_df = None
         self.sweeps_dict = None
 
-        
         self.cell_analysis_dict = None
         self.power_curve_df = None
         self.tuples = None
         self.power_curve_stats = None
         self.sweep_analysis_values = None
-        
-
 
         self.cell_sweep_info = self.initialize_cell()
 
@@ -428,6 +425,9 @@ class JaneCell(object):
         # determines whether the cell is responding, using mean_trace_filtered
         responses = self.calculate_responses(mean_std_baseline, mean_trace_peak, time_to_peak_mean)
 
+        # calculates the baseline-subtracted mean trace for plotting purposes
+        sub_mean_trace = mean_trace_filtered - mean_baseline
+
         # collects measurements into cell dict, nested dict for each stim condition
         stim_dict = {
             'Raw Peaks (pA)': current_peaks.tolist(),
@@ -446,7 +446,7 @@ class JaneCell(object):
             'Response 3x STD': responses['Response 3x STD'][0]
         }
 
-        return stim_condition, current_peaks, stim_dict
+        return stim_condition, sub_mean_trace, current_peaks, stim_dict
 
 
     def make_cell_analysis_dict(self):
@@ -454,9 +454,10 @@ class JaneCell(object):
         # create dict to hold analysis results for each stim set 
         cell_analysis_dict = {}
         power_curve_df = pd.DataFrame()
+        all_mean_traces = pd.DataFrame()
 
         for stim_id in range(len(list(self.sweeps_dict))):
-            stim_condition, current_peaks, stim_dict = self.calculate_stim_stats(stim_id)
+            stim_condition, sub_mean_trace, current_peaks, stim_dict = self.calculate_stim_stats(stim_id)
             cell_analysis_dict[stim_condition] = stim_dict
 
             # collects peaks into power_curve_df, column for each stim condition
@@ -464,8 +465,14 @@ class JaneCell(object):
             stim_peaks.columns = [stim_condition]
             power_curve_df = pd.concat([power_curve_df, stim_peaks], axis=1)
 
+            # collects mean traces into all_mean_traces, column for each stim condition
+            mean_trace = pd.DataFrame(sub_mean_trace)
+            mean_trace.columns = [stim_condition]
+            all_mean_traces = pd.concat([all_mean_traces, mean_trace], axis=1)
+
         self.cell_analysis_dict = cell_analysis_dict
         self.power_curve_df = power_curve_df
+        self.all_mean_traces = all_mean_traces
 
     
     # export analysis values to csv
@@ -502,7 +509,6 @@ class JaneCell(object):
         ''' 
         The below makes response stats tables used to plot graphs
         '''
-
         cell_analysis_df = pd.DataFrame(self.cell_analysis_dict).T
         cell_analysis_df.index = pd.MultiIndex.from_tuples(self.tuples)
 
@@ -515,7 +521,7 @@ class JaneCell(object):
 
         cell_analysis_df.reset_index(inplace=True)
         cell_analysis_df = cell_analysis_df.rename(columns={'level_0':'Light Intensity', 'level_1':'Light Duration'})
-
+        
         self.sweep_analysis_values = sweep_analysis_values
         self.cell_analysis_df = cell_analysis_df
         
@@ -637,6 +643,93 @@ class JaneCell(object):
         )
 
         fig.show()
+
+
+    def make_mean_traces_df(self):
+
+        ''' 
+        The below makes mean traces df used to plot graphs
+        '''
+        
+        mean_trace_df = self.all_mean_traces.T
+        mean_trace_df.index = pd.MultiIndex.from_tuples(self.tuples)
+
+        mean_trace_df.reset_index(inplace=True)
+        mean_trace_df = mean_trace_df.rename(columns={'level_0':'Light Intensity', 'level_1':'Light Duration'})
+
+        self.mean_trace_df = mean_trace_df
+
+
+    def graph_response_trace(self):
+        '''
+        Plots the baseline-subtracted mean trace for each stimulus condition around the response time, 
+        one subplot for each duration, if applicable
+        '''
+
+        # intensities and durations, and color might need to become self variables
+
+        sweep_analysis_values = self.sweep_analysis_values
+        intensities = sweep_analysis_values['Light Intensity'].unique()
+        durations = sweep_analysis_values['Light Duration'].unique()
+
+        color = px.colors.qualitative.Plotly
+
+        
+
+        stim_columns = self.mean_trace_df.loc[:,['Light Intensity', 'Light Duration']]
+        traces_to_plot = self.mean_trace_df.loc[:,500.00:700.00] # only plots first 400-1000 ms
+        traces_to_plot_combined = pd.concat([stim_columns, traces_to_plot], axis=1)
+
+
+        fig = make_subplots(
+            #rows=len(intensities), cols=1,
+            rows=1, cols=len(intensities),
+            subplot_titles=(intensities + " Light Intensity"),
+            shared_yaxes=True,
+            x_title = "Time (ms)",
+            y_title = "Amplitude (pA)"
+            )
+
+        
+
+        for intensity_count, intensity in enumerate(intensities):
+            for duration_count, duration in enumerate(durations):
+
+                # plot sweeps from all intensities of one duration
+                fig.add_trace(go.Scatter(
+                    x=traces_to_plot.columns,
+                    y=traces_to_plot_combined.loc[(traces_to_plot_combined['Light Intensity']==intensity) 
+                        & (traces_to_plot_combined['Light Duration']==duration), 500.00::].squeeze(), 
+                    name=duration,
+                    mode='lines',
+                    line=dict(color=color[duration_count]),
+                    legendgroup=duration,
+                    ),
+                    #row=intensity_count+1, col=1
+                    row=1, col=intensity_count+1
+                )
+
+        # below is code from stack overflow to hide duplicate legends
+        names = set()
+        fig.for_each_trace(
+            lambda trace:
+                trace.update(showlegend=False)
+                if (trace.name in names) else names.add(trace.name))
+        
+        fig.update_layout(legend_title_text='Light Duration')
+
+        pdb.set_trace()
+
+        
+
+        fig.show()
+
+
+
+        
+        # fig2 = px.line(trace_to_plot, x=trace_to_plot.index, y=trace_to_plot.columns)
+        # fig2.show()
+
 
     
 
