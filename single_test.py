@@ -684,7 +684,7 @@ class JaneCell(object):
         fig = make_subplots(
             #rows=len(intensities), cols=1,
             rows=1, cols=len(intensities),
-            subplot_titles=(intensities + " Light Intensity"),
+            subplot_titles=(intensities[::-1] + " Light Intensity"),
             shared_yaxes=True,
             x_title = "Time (ms)",
             y_title = "Amplitude (pA)"
@@ -706,7 +706,7 @@ class JaneCell(object):
                     legendgroup=duration,
                     ),
                     #row=intensity_count+1, col=1
-                    row=1, col=intensity_count+1
+                    row=1, col=len(intensities)-intensity_count
                 )
 
         # below is code from stack overflow to hide duplicate legends
