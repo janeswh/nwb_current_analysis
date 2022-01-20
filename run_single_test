@@ -51,7 +51,7 @@ def main(csvfile, nwbfile):
     summary_plots = cell.graph_curve_stats()
     cell.make_mean_traces_df()
     cell.graph_response_trace()
-
+    cell.output_html_plots()
 
 if __name__ == "__main__":
     csvfile = '/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables/non-injected_sweep_info.csv'

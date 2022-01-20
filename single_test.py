@@ -33,7 +33,8 @@ class JaneCell(object):
         self.tuples = None
         self.power_curve_stats = None
         self.sweep_analysis_values = None
-
+        self.cell_name = None
+        self.genotype = None
         self.cell_sweep_info = self.initialize_cell()
 
 
@@ -66,9 +67,10 @@ class JaneCell(object):
         # gets sweep info for one cell, drops empty values
         file = 'JH20211103_c3.nwb'
         file_split = file.split('.')
-        cell_name = file_split[0]
+        self.cell_name = file_split[0]
 
-        cell_sweep_info = pd.DataFrame(self.sweep_info.loc[cell_name]).dropna()
+        cell_sweep_info = pd.DataFrame(self.sweep_info.loc[self.cell_name]).dropna()
+        self.genotype = cell_sweep_info.loc['Genotype'][0]
 
         return cell_sweep_info
 
@@ -542,7 +544,7 @@ class JaneCell(object):
 
 
         color = ['#0859C6', '#10A5F5', '#00DBFF']
-        fig = make_subplots(
+        curve_stats_fig = make_subplots(
             rows=3, cols=2,
             x_title = "Light Intensity (%)"
             )
@@ -554,7 +556,7 @@ class JaneCell(object):
             error = power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['SEM']].squeeze()
             
             # power curve
-            fig.add_trace(go.Scatter(
+            curve_stats_fig.add_trace(go.Scatter(
                 x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
                 y=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Mean Response Amplitude (pA)']].squeeze(), 
                 name=duration,
@@ -563,87 +565,100 @@ class JaneCell(object):
                     array=error.values,
                     visible=True),     
                 mode='lines+markers',
-                line=dict(color=color[count])
+                line=dict(color=color[count]),
+                legendgroup=duration,
                 ),
                 row=1, col=1
             )
             
             # onset latency
-            fig.add_trace(go.Box(
+            curve_stats_fig.add_trace(go.Box(
                 x=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Light Intensity']].squeeze(),
                 y=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Onset Latencies (ms)']].squeeze(),
                 name=duration,
                 line=dict(color=color[count]),
-                showlegend=False,
+                legendgroup=duration,
                 ),
                 row=1, col=2
             )
             
             # onset jitter
-            fig.add_trace(go.Bar(
+            curve_stats_fig.add_trace(go.Bar(
                 x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
                 y=cell_analysis_df.loc[cell_analysis_df['Light Duration']==duration, ['Onset Jitter']].squeeze(),
                 name=duration,
                 marker_color=color[count],
-                showlegend=False,
+                legendgroup=duration,
                 ),
                 row=2, col=1
             )
             
             
             # mean trace onset latency
-            fig.add_trace(go.Bar(
+            curve_stats_fig.add_trace(go.Bar(
                 x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
                 y=cell_analysis_df.loc[cell_analysis_df['Light Duration']==duration, ['Mean Trace Onset Latency (ms)']].squeeze(),
                 name=duration,
                 marker_color=color[count],
-                showlegend=False,
+                legendgroup=duration,
                 ),
                 row=2, col=2
             )
 
 
             # time to peak
-            fig.add_trace(go.Box(
+            curve_stats_fig.add_trace(go.Box(
                 x=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Light Intensity']].squeeze(),
                 y=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Time to Peaks (ms)']].squeeze(),
                 name=duration,
                 line=dict(color=color[count]),
-                showlegend=False,
+                legendgroup=duration,
                 ),
                 row=3, col=1
             )
 
             # mean trace time to peak
-            fig.add_trace(go.Bar(
+            curve_stats_fig.add_trace(go.Bar(
                 x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
                 y=cell_analysis_df.loc[cell_analysis_df['Light Duration']==duration, ['Mean Trace Time to Peak (ms)']].squeeze(),
                 name=duration,
                 marker_color=color[count],
-                showlegend=False,
+                legendgroup=duration,
                 ),
                 row=3, col=2
             )
 
             # Update xaxis properties
-            fig.update_xaxes(autorange='reversed')
+            curve_stats_fig.update_xaxes(autorange='reversed')
 
 
             # Update yaxis properties
-            fig.update_yaxes(title_text="Response Amplitude (pA)", row=1, col=1, autorange='reversed')
-            fig.update_yaxes(title_text="Onset Latency (ms)", row=1, col=2)
-            fig.update_yaxes(title_text="Onset Jitter", row=2, col=1)
-            fig.update_yaxes(title_text="Mean Trace Onset Latency (ms)", row=2, col=2)
-            fig.update_yaxes(title_text="Time to Peak (ms)", row=3, col=1)
-            fig.update_yaxes(title_text="Mean Trace Time to Peak (ms)", row=3, col=2)
+            curve_stats_fig.update_yaxes(title_text="Response Amplitude (pA)", row=1, col=1, autorange='reversed')
+            curve_stats_fig.update_yaxes(title_text="Onset Latency (ms)", row=1, col=2)
+            curve_stats_fig.update_yaxes(title_text="Onset Jitter", row=2, col=1)
+            curve_stats_fig.update_yaxes(title_text="Mean Trace Onset Latency (ms)", row=2, col=2)
+            curve_stats_fig.update_yaxes(title_text="Time to Peak (ms)", row=3, col=1)
+            curve_stats_fig.update_yaxes(title_text="Mean Trace Time to Peak (ms)", row=3, col=2)
 
-        fig.update_layout(
+        curve_stats_fig.update_layout(
             #yaxis_title='Onset Latency (ms)',
             boxmode='group' # group together boxes of the different traces for each value of x
         )
 
-        fig.show()
+                # below is code from stack overflow to hide duplicate legends
+        names = set()
+        curve_stats_fig.for_each_trace(
+            lambda trace:
+                trace.update(showlegend=False)
+                if (trace.name in names) else names.add(trace.name))
+        
+        curve_stats_fig.update_layout(legend_title_text='Light Duration')
 
+        curve_stats_fig.show()
+
+        self.curve_stats_fig = curve_stats_fig
+
+        
 
     def make_mean_traces_df(self):
 
@@ -680,7 +695,7 @@ class JaneCell(object):
         traces_to_plot_combined = pd.concat([stim_columns, traces_to_plot], axis=1)
 
 
-        fig = make_subplots(
+        mean_traces_fig = make_subplots(
             #rows=len(intensities), cols=1,
             rows=1, cols=len(intensities),
             subplot_titles=(intensities[::-1] + " Light Intensity"),
@@ -695,7 +710,7 @@ class JaneCell(object):
             for duration_count, duration in enumerate(durations):
 
                 # plot sweeps from all intensities of one duration
-                fig.add_trace(go.Scatter(
+                mean_traces_fig.add_trace(go.Scatter(
                     x=traces_to_plot.columns,
                     y=traces_to_plot_combined.loc[(traces_to_plot_combined['Light Intensity']==intensity) 
                         & (traces_to_plot_combined['Light Duration']==duration), 500.00::].squeeze(), 
@@ -710,25 +725,31 @@ class JaneCell(object):
 
         # below is code from stack overflow to hide duplicate legends
         names = set()
-        fig.for_each_trace(
+        mean_traces_fig.for_each_trace(
             lambda trace:
                 trace.update(showlegend=False)
                 if (trace.name in names) else names.add(trace.name))
         
-        fig.update_layout(legend_title_text='Light Duration')
+        mean_traces_fig.update_layout(
+            title_text=self.cell_name + ", " + self.genotype,
+            title_x=0.5,
+            legend_title_text='Light Duration')   
 
+        mean_traces_fig.show()
+
+        self.mean_traces_fig = mean_traces_fig
+
+
+
+    def output_html_plots(self):
+        '''
+        Saves the sweep stats and mean trace plots as one html file
+        '''
+
+        self.mean_traces_fig.write_html("/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/combined_plots.html",
+            full_html=False, include_plotlyjs='cdn')
         
-        pdb.set_trace()
-        
-
-        fig.show()
-
-
-
-        
-        # fig2 = px.line(trace_to_plot, x=trace_to_plot.index, y=trace_to_plot.columns)
-        # fig2.show()
-
-
-    
-
+        #pdb.set_trace()
+        with open("/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/combined_plots.html", 'a') as f:
+            f.write(self.curve_stats_fig.to_html(full_html=False, include_plotlyjs=False))
+            
