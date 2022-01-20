@@ -526,7 +526,19 @@ class JaneCell(object):
         
         self.sweep_analysis_values = sweep_analysis_values
         self.cell_analysis_df = cell_analysis_df
-        
+
+        pdb.set_trace()
+
+
+    def export_stats_csv(self):
+        '''
+        Exports sweep stats values (self.cell_analysis_df) to a csv file, not MultiIndex
+        '''
+
+        stats_cleaned = self.cell_analysis_df.copy()
+        stats_cleaned = stats_cleaned.drop(['Raw Peaks (pA)', 'Mean Raw Peaks (pA)', 'Onset Latencies (ms)', 'Time to Peaks (ms)'], axis=1)
+        stats_cleaned.to_csv('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/sweep_stats.csv', index=False)
+
 
     def graph_curve_stats(self):
         '''
