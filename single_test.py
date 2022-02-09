@@ -22,9 +22,10 @@ import pdb
 
 
 class JaneCell(object):
-    def __init__(self, sweep_info, nwbfile):
+    def __init__(self, sweep_info, nwbfile, nwbfile_name):
         self.sweep_info = sweep_info
         self.nwbfile = nwbfile
+        self.file_name = nwbfile_name
         self.raw_df = None
         self.sweeps_dict = None
 
@@ -65,12 +66,13 @@ class JaneCell(object):
         self.raw_df.columns = vc_sweeps.sweep_number
 
         # gets sweep info for one cell, drops empty values
-        file = 'JH20211103_c3.nwb'
-        file_split = file.split('.')
+        file_split = self.file_name.split('.')
         self.cell_name = file_split[0]
 
         cell_sweep_info = pd.DataFrame(self.sweep_info.loc[self.cell_name]).dropna()
         self.genotype = cell_sweep_info.loc['Genotype'][0]
+
+        #pdb.set_trace()
 
         return cell_sweep_info
 
@@ -527,9 +529,7 @@ class JaneCell(object):
         self.sweep_analysis_values = sweep_analysis_values
         self.cell_analysis_df = cell_analysis_df
 
-        pdb.set_trace()
-
-
+               
     def export_stats_csv(self):
         '''
         Exports sweep stats values (self.cell_analysis_df) to a csv file, not MultiIndex
@@ -547,6 +547,8 @@ class JaneCell(object):
         measurements in subplots
         '''
 
+    
+        
         power_curve_stats = self.power_curve_stats
         sweep_analysis_values = self.sweep_analysis_values
         cell_analysis_df = self.cell_analysis_df
@@ -567,22 +569,25 @@ class JaneCell(object):
 
             error = power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['SEM']].squeeze()
             
-            # power curve
-            curve_stats_fig.add_trace(go.Scatter(
-                x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
-                y=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Mean Response Amplitude (pA)']].squeeze(), 
-                name=duration,
-                error_y=dict(
-                    type='data',
-                    array=error.values,
-                    visible=True),     
-                mode='lines+markers',
-                line=dict(color=color[count]),
-                legendgroup=duration,
-                ),
-                row=1, col=1
-            )
+            if len(intensities) > 1:             
+
+                # power curve
+                curve_stats_fig.add_trace(go.Scatter(
+                    x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
+                    y=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Mean Response Amplitude (pA)']].squeeze(), 
+                    name=duration,
+                    error_y=dict(
+                        type='data',
+                        array=error.values,
+                        visible=True),     
+                    mode='lines+markers',
+                    line=dict(color=color[count]),
+                    legendgroup=duration,
+                    ),
+                    row=1, col=1
+                )
             
+
             # onset latency
             curve_stats_fig.add_trace(go.Box(
                 x=sweep_analysis_values.loc[sweep_analysis_values['Light Duration']==duration,['Light Intensity']].squeeze(),
@@ -594,6 +599,7 @@ class JaneCell(object):
                 row=1, col=2
             )
             
+            pdb.set_trace()
             # onset jitter
             curve_stats_fig.add_trace(go.Bar(
                 x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
