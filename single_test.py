@@ -1,3 +1,4 @@
+from pickle import FALSE
 import pandas as pd
 import matplotlib.pyplot as plt
 import pynwb
@@ -36,6 +37,7 @@ class JaneCell(object):
         self.sweep_analysis_values = None
         self.cell_name = None
         self.genotype = None
+        self.response = None
         self.cell_sweep_info = self.initialize_cell()
 
 
@@ -72,11 +74,22 @@ class JaneCell(object):
         cell_sweep_info = pd.DataFrame(self.sweep_info.loc[self.cell_name]).dropna()
         self.genotype = cell_sweep_info.loc['Genotype'][0]
 
-        #pdb.set_trace()
-
         return cell_sweep_info
 
 
+    def check_response(self):
+        '''
+        Checks whether cell is determined to have response or not (from sweep_info)
+        '''
+        if self.cell_sweep_info.loc['Response'][0] == 'No':
+            response = False
+        else:
+            response = True
+        #pdb.set_trace()
+
+        self.response = response
+        return response
+        
     def drop_sweeps(self):
         '''
         If applicable, drops depol sweeps and esc sweeps
@@ -123,8 +136,16 @@ class JaneCell(object):
         '''
         Create dict with stim name as keys, VC data as values
         '''
-
+        #pdb.set_trace()
         stim_sweep_info = self.cell_sweep_info.filter(like="%", axis=0)
+
+        # drops 0.5 and 0.1 ms sweeps
+        stim_sweep_info = stim_sweep_info[~stim_sweep_info.index.str.contains('0.5 ms')] # drops 4 ms
+        stim_sweep_info = stim_sweep_info[~stim_sweep_info.index.str.contains('0.1 ms')] # drops 100 ms
+
+        if self.response == True: # the dropping doesn't seem to work in one line
+            stim_sweep_info = stim_sweep_info[~stim_sweep_info.index.str.contains('4 ms')] # drops 4 ms
+            stim_sweep_info = stim_sweep_info[~stim_sweep_info.index.str.contains('100 ms')] # drops 100 ms
         sweeps_dict = {}
 
         # define sweep ranges for each stim set present
@@ -568,24 +589,24 @@ class JaneCell(object):
         for count, duration in enumerate(durations):
 
             error = power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['SEM']].squeeze()
-            
-            if len(intensities) > 1:             
+            if len(intensities) > 1:        
+                if isinstance(error, float) != True:     # only make power curve if more than one intensity exists
 
-                # power curve
-                curve_stats_fig.add_trace(go.Scatter(
-                    x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
-                    y=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Mean Response Amplitude (pA)']].squeeze(), 
-                    name=duration,
-                    error_y=dict(
-                        type='data',
-                        array=error.values,
-                        visible=True),     
-                    mode='lines+markers',
-                    line=dict(color=color[count]),
-                    legendgroup=duration,
-                    ),
-                    row=1, col=1
-                )
+                    # power curve
+                    curve_stats_fig.add_trace(go.Scatter(
+                        x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
+                        y=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Mean Response Amplitude (pA)']].squeeze(), 
+                        name=duration,
+                        error_y=dict(
+                            type='data',
+                            array=error.values,
+                            visible=True),     
+                        mode='lines+markers',
+                        line=dict(color=color[count]),
+                        legendgroup=duration,
+                        ),
+                        row=1, col=1
+                    )
             
 
             # onset latency
@@ -599,7 +620,7 @@ class JaneCell(object):
                 row=1, col=2
             )
             
-            pdb.set_trace()
+            #pdb.set_trace()
             # onset jitter
             curve_stats_fig.add_trace(go.Bar(
                 x=power_curve_stats.loc[power_curve_stats['Light Duration']==duration,['Light Intensity']].squeeze(),
@@ -692,6 +713,7 @@ class JaneCell(object):
 
         self.mean_trace_df = mean_trace_df
 
+        
 
     def graph_response_trace(self):
         '''
@@ -722,31 +744,38 @@ class JaneCell(object):
             y_title = "Amplitude (pA)"
             )
 
-        
+        # new method for hiding duplicate legends:
+        # create a list to track each time a duration has been plotted, and only show legends
+        # for the first time the duration is plotted
+        duration_checker = []
 
         for intensity_count, intensity in enumerate(intensities):
             for duration_count, duration in enumerate(durations):
-
+                #pdb.set_trace()
                 # plot sweeps from all intensities of one duration
+                y_toplot = traces_to_plot_combined.loc[(traces_to_plot_combined['Light Intensity']==intensity) 
+                        & (traces_to_plot_combined['Light Duration']==duration), 500.00::].squeeze()
                 mean_traces_fig.add_trace(go.Scatter(
                     x=traces_to_plot.columns,
-                    y=traces_to_plot_combined.loc[(traces_to_plot_combined['Light Intensity']==intensity) 
-                        & (traces_to_plot_combined['Light Duration']==duration), 500.00::].squeeze(), 
+                    y=y_toplot, 
                     name=duration,
                     mode='lines',
                     line=dict(color=color[duration_count]),
+                    showlegend = False if duration in duration_checker else True,
                     legendgroup=duration,
                     ),
                     #row=intensity_count+1, col=1
                     row=1, col=len(intensities)-intensity_count
                 )
+                if len(y_toplot) != 0:
+                    duration_checker.append(duration)
 
         # below is code from stack overflow to hide duplicate legends
-        names = set()
-        mean_traces_fig.for_each_trace(
-            lambda trace:
-                trace.update(showlegend=False)
-                if (trace.name in names) else names.add(trace.name))
+        # names = set()
+        # mean_traces_fig.for_each_trace(
+        #     lambda trace:
+        #         trace.update(showlegend=False)
+        #         if (trace.name in names) else names.add(trace.name))
         
         mean_traces_fig.update_layout(
             title_text=self.cell_name + ", " + self.genotype,
@@ -768,6 +797,8 @@ class JaneCell(object):
             full_html=False, include_plotlyjs='cdn')
         
         #pdb.set_trace()
-        with open("/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/combined_plots.html", 'a') as f:
-            f.write(self.curve_stats_fig.to_html(full_html=False, include_plotlyjs=False))
+        # only append curve stats if cell has a response
+        if self.response == True:
+            with open("/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/combined_plots.html", 'a') as f:
+                f.write(self.curve_stats_fig.to_html(full_html=False, include_plotlyjs=False))
             

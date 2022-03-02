@@ -33,31 +33,45 @@ def main(csvfile, nwbfile):
 
     #0 initializes JaneCell class
     cell = JaneCell(sweep_info, nwbfile, nwbfile_name)
-    
-    #1 drops depolarized and esc AP sweeps from VC data if applicable
+
+    #1 checks whether cell has a response before proceeding
+    response = cell.check_response()
+
+    #2 drops depolarized and esc AP sweeps from VC data if applicable
     cell.drop_sweeps()
 
-    #2 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
+    #3 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
     cell.make_sweeps_dict()
 
-    #3 runs stats on sweeps and creates a dict for each stim condition
+    #4 runs stats on sweeps and creates a dict for each stim condition
     cell.make_cell_analysis_dict()
 
-    #4 calculates power curve for plotting
+    #5 calculates power curve for plotting
     cell.make_power_curve_stats_df()
 
-    #5 calculates response stats for plotting
+    #6 calculates response stats for plotting
     cell.make_stats_df()
 
-    #6 makes plots for power curve and response stats
-    summary_plots = cell.graph_curve_stats()
+    # plots mean traces
     cell.make_mean_traces_df()
     cell.graph_response_trace()
+    
+
+
+
+    if response == True:
+        #7 makes plots for power curve and response stats
+        summary_plots = cell.graph_curve_stats()
+      
+    else:
+        print("Cell doesn't have response, no response stats plotted")
+
+    # saves combined plots as html file
     cell.output_html_plots()
 
 if __name__ == "__main__":
     csvfile = '/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables/non-injected_sweep_info.csv'
-    nwbfile_name = 'JH20210921_c3.nwb'
+    nwbfile_name = 'JH20210922_c1.nwb'
 
     main(csvfile, nwbfile_name)
     print("I'm done")
