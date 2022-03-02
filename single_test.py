@@ -23,7 +23,8 @@ import pdb
 
 
 class JaneCell(object):
-    def __init__(self, sweep_info, nwbfile, nwbfile_name):
+    def __init__(self, dataset, sweep_info, nwbfile, nwbfile_name):
+        self.dataset = dataset
         self.sweep_info = sweep_info
         self.nwbfile = nwbfile
         self.file_name = nwbfile_name
@@ -550,6 +551,8 @@ class JaneCell(object):
         self.sweep_analysis_values = sweep_analysis_values
         self.cell_analysis_df = cell_analysis_df
 
+        #pdb.set_trace()
+
                
     def export_stats_csv(self):
         '''
@@ -558,7 +561,13 @@ class JaneCell(object):
 
         stats_cleaned = self.cell_analysis_df.copy()
         stats_cleaned = stats_cleaned.drop(['Raw Peaks (pA)', 'Mean Raw Peaks (pA)', 'Onset Latencies (ms)', 'Time to Peaks (ms)'], axis=1)
-        stats_cleaned.to_csv('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/sweep_stats.csv', index=False)
+        base_path = os.path.join('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables', self.dataset, self.genotype)
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+        
+        csv_filename = '{}_response_stats.csv'.format(self.cell_name)        
+        path = os.path.join(base_path, csv_filename)
+        stats_cleaned.to_csv(path, float_format='%8.4f', index=False)
 
 
     def graph_curve_stats(self):
@@ -793,12 +802,18 @@ class JaneCell(object):
         Saves the sweep stats and mean trace plots as one html file
         '''
 
-        self.mean_traces_fig.write_html("/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/combined_plots.html",
-            full_html=False, include_plotlyjs='cdn')
+        base_path = os.path.join('/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/figures', self.dataset, self.genotype)
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+        
+        html_filename = '{}_summary_plots.html'.format(self.cell_name)        
+        path = os.path.join(base_path, html_filename)
+        
+        self.mean_traces_fig.write_html(path, full_html=False, include_plotlyjs='cdn')
         
         #pdb.set_trace()
         # only append curve stats if cell has a response
         if self.response == True:
-            with open("/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/combined_plots.html", 'a') as f:
+            with open(path, 'a') as f:
                 f.write(self.curve_stats_fig.to_html(full_html=False, include_plotlyjs=False))
             
