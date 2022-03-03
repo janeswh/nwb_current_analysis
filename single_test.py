@@ -673,8 +673,34 @@ class JaneCell(object):
             rows=3, cols=2, x_title="Light Intensity (%)"
         )
 
+        # make the x-axis of light intensity to be used in each subplot
+        pdb.set_trace()
+        # all_x_intensities = pd.DataFrame()
+        x_dict = {}
+
+        for duration in durations:
+            x_intensity = sweep_analysis_values.loc[
+                sweep_analysis_values["Light Duration"] == duration,
+                ["Light Intensity"],
+            ]
+
+            # all_x_intensities = pd.concat([all_x_intensities, x_intensity])
+            # all_x_intensities[duration] = x_intensity
+            x_dict[duration] = x_intensity
+
+        # max(x_intensities_dict, key=lambda x: len(x_intensities_dict[x]))
+        # max(x_intensities_dict.values(), key=len)
+        max_key, max_value = max(x_dict.items(), key=lambda x: len(set(x[1])))
+
+        # if duration only has one intensity, resize_like
+        for duration in durations:
+            if x_dict[duration].nunique()[0] == 1:
+                x_dict[duration] = x_dict[duration].reindex_like(
+                    x_dict[max_key], method="ffill"
+                )
+
         for count, duration in enumerate(durations):
-            pdb.set_trace()
+
             error = power_curve_stats.loc[
                 power_curve_stats["Light Duration"] == duration, ["SEM"]
             ].squeeze()
