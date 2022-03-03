@@ -81,7 +81,7 @@ if __name__ == "__main__":
         dataset,
         csvfile_name,
     )
-    nwbfile_name = "JH20211006_c1.nwb"
+    nwbfile_name = "JH20211029_c2.nwb"
 
     run_single(dataset, csvfile, nwbfile_name)
 

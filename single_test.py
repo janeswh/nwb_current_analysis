@@ -71,6 +71,8 @@ class JaneCell(object):
         file_split = self.file_name.split(".")
         self.cell_name = file_split[0]
 
+        # pdb.set_trace()
+
         cell_sweep_info = pd.DataFrame(
             self.sweep_info.loc[self.cell_name]
         ).dropna()
@@ -142,7 +144,6 @@ class JaneCell(object):
             stim_sweep_info = stim_sweep_info[
                 stim_sweep_info.index.str.contains("0.01 ms")
             ]
-
             return True, stim_sweep_info
 
         else:
@@ -154,6 +155,9 @@ class JaneCell(object):
         """
         # pdb.set_trace()
         stim_sweep_info = self.cell_sweep_info.filter(like="%", axis=0)
+        stim_sweep_info = stim_sweep_info[
+            stim_sweep_info[self.cell_name].str.contains("-")
+        ]
 
         if self.check_exceptions(stim_sweep_info)[0] == True:
             stim_sweep_info = self.check_exceptions(stim_sweep_info)[1]
@@ -457,10 +461,6 @@ class JaneCell(object):
         mean_trace_filtered.index = time
         traces_filtered.index = time
 
-        # plot mean sweeps to test
-        fig = plt.figure()
-        plt.plot(mean_trace_filtered)
-
         # find mean baseline, defined as the last 3s of the sweep
         baseline = self.calculate_mean_baseline(
             traces_filtered, baseline_start=100, baseline_end=450
@@ -674,7 +674,7 @@ class JaneCell(object):
         )
 
         for count, duration in enumerate(durations):
-
+            pdb.set_trace()
             error = power_curve_stats.loc[
                 power_curve_stats["Light Duration"] == duration, ["SEM"]
             ].squeeze()
@@ -727,7 +727,6 @@ class JaneCell(object):
                 col=2,
             )
 
-            # pdb.set_trace()
             # onset jitter
             curve_stats_fig.add_trace(
                 go.Bar(
