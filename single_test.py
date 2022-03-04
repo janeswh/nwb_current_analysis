@@ -126,7 +126,7 @@ class JaneCell(object):
                     all_sweeps = list(range(r_start, r_end))
                     depol_sweeps.extend(all_sweeps)
                 else:
-                    depol_sweeps.append(int(nonesc_range[i]))
+                    depol_sweeps.append(int(depol_range[i]))
 
         # if applicable, drops depol sweeps and  esc sweeps
         if "depol_sweeps" in globals():
@@ -674,40 +674,44 @@ class JaneCell(object):
         )
 
         # make the x-axis of light intensity to be used in each subplot
-        pdb.set_trace()
-        # all_x_intensities = pd.DataFrame()
-        x_dict = {}
+
+        x_sweep_dict = {}
 
         for duration in durations:
-            x_intensity = sweep_analysis_values.loc[
+            x_sweep_intensity = sweep_analysis_values.loc[
                 sweep_analysis_values["Light Duration"] == duration,
                 ["Light Intensity"],
             ]
 
-            # all_x_intensities = pd.concat([all_x_intensities, x_intensity])
-            # all_x_intensities[duration] = x_intensity
-            x_dict[duration] = x_intensity
+            x_sweep_dict[duration] = x_sweep_intensity
 
-        # max(x_intensities_dict, key=lambda x: len(x_intensities_dict[x]))
-        # max(x_intensities_dict.values(), key=len)
-        max_key, max_value = max(x_dict.items(), key=lambda x: len(set(x[1])))
-
-        # if duration only has one intensity, resize_like
-        for duration in durations:
-            if x_dict[duration].nunique()[0] == 1:
-                x_dict[duration] = x_dict[duration].reindex_like(
-                    x_dict[max_key], method="ffill"
-                )
-
+        max_key, max_value = max(
+            x_sweep_dict.items(), key=lambda x: len(set(x[1]))
+        )
+        # pdb.set_trace()
         for count, duration in enumerate(durations):
 
             error = power_curve_stats.loc[
                 power_curve_stats["Light Duration"] == duration, ["SEM"]
             ].squeeze()
+
+            # if duration has only one intensity, resize_like the y
+            # values for plotting
+            # if x_dict[duration].nunique()[0] == 1:
+
+            #     # onset latency
+            #     y_onsetlatency = (
+            #         sweep_analysis_values.loc[
+            #             sweep_analysis_values["Light Duration"] == duration,
+            #             ["Onset Latencies (ms)"],
+            #         ]
+            #         .reindex_like(bigger, method="ffill")
+            #         .squeeze()
+            #     )
+
             if len(intensities) > 1:
-                if (
-                    isinstance(error, float) != True
-                ):  # only make power curve if more than one intensity exists
+                if isinstance(error, float) != True:
+                    # only make power curve if more than one intensity exists
 
                     # power curve
                     curve_stats_fig.add_trace(
@@ -734,15 +738,164 @@ class JaneCell(object):
                         col=1,
                     )
 
+            # buffering for durations with only one intensity
+            if x_sweep_dict[duration].nunique()[0] == 1:
+
+                sweep_partial = sweep_analysis_values.loc[
+                    sweep_analysis_values["Light Duration"] == duration
+                ].copy()
+
+                # identifies the intensity present in the smaller duration
+                partial_intens = sweep_partial["Light Intensity"].unique()[0]
+
+                cell_partial = cell_analysis_df.loc[
+                    cell_analysis_df["Light Duration"] == duration,
+                    [
+                        "Light Intensity",
+                        "Light Duration",
+                        "Onset Jitter",
+                        "Mean Trace Onset Latency (ms)",
+                        "Mean Trace Time to Peak (ms)",
+                    ],
+                ].copy()
+
+                # pdb.set_trace()
+
+                # if there exists a duration with more than 1 intensity,
+                # use it as template for buffering
+                if x_sweep_dict[max_key].nunique()[0] > 1:
+
+                    sweep_template = sweep_analysis_values.loc[
+                        sweep_analysis_values["Light Duration"] == max_key
+                    ].copy()
+
+                    sweep_template.loc[
+                        sweep_template["Light Duration"] == max_key,
+                        ["Onset Latencies (ms)", "Time to Peaks (ms)"],
+                    ] = 0
+
+                    sweep_template["Light Duration"] = duration
+
+                    # for cell_analysis_df
+                    cell_template = cell_analysis_df.loc[
+                        cell_analysis_df["Light Duration"] == max_key,
+                        [
+                            "Light Intensity",
+                            "Light Duration",
+                            "Onset Jitter",
+                            "Mean Trace Onset Latency (ms)",
+                            "Mean Trace Time to Peak (ms)",
+                        ],
+                    ].copy()
+
+                    cell_template.loc[
+                        cell_template["Light Duration"] == max_key,
+                        [
+                            "Onset Jitter",
+                            "Mean Trace Onset Latency (ms)",
+                            "Mean Trace Time to Peak (ms)",
+                        ],
+                    ] = 0
+
+                    cell_template["Light Duration"] = duration
+
+                    x_cell_template = power_curve_stats.loc[
+                        power_curve_stats["Light Duration"] == max_key,
+                        ["Light Intensity"],
+                    ]
+
+                # if no duration exists with more than one intensity, make up
+                # a skeletal five-intensity template for buffering
+                else:
+                    # creating list of intensities for template column
+                    default_intensities = ["100%", "80%", "50%", "20%", "10%"]
+                    intensities_template = [
+                        intensity
+                        for intensity in default_intensities
+                        for i in range(10)
+                    ]
+
+                    # creating list of durations
+                    durations_template = np.repeat(duration, 50)
+
+                    # creating list of zeroes for y_sweep_values template
+                    zeros_list = np.repeat(0, 50)
+
+                    sweep_template = pd.DataFrame(
+                        {
+                            "Light Intensity": intensities_template,
+                            "Light Duration": durations_template,
+                            "Onset Latencies (ms)": zeros_list,
+                            "Time to Peaks (ms)": zeros_list,
+                        }
+                    )
+
+                    # creating skeletal template for y_cell_values
+                    cell_template = pd.DataFrame(
+                        {
+                            "Light Intensity": default_intensities,
+                            "Light Duration": np.repeat(duration, 5),
+                            "Onset Jitter": np.repeat(0, 5),
+                            "Mean Trace Onset Latency (ms)": np.repeat(0, 5),
+                            "Mean Trace Time to Peak (ms)": np.repeat(0, 5),
+                        }
+                    )
+
+                    cell_partial = cell_analysis_df.loc[
+                        cell_analysis_df["Light Duration"] == duration,
+                        [
+                            "Light Intensity",
+                            "Light Duration",
+                            "Onset Jitter",
+                            "Mean Trace Onset Latency (ms)",
+                            "Mean Trace Time to Peak (ms)",
+                        ],
+                    ].copy()
+
+                    x_cell_template = pd.DataFrame(
+                        {"Light Intensity": np.repeat(partial_intens, 5)}
+                    )
+
+                sweep_tobe_replaced = sweep_template.loc[
+                    sweep_template["Light Intensity"] == partial_intens
+                ]
+
+                sweep_tobe_replaced.index = list(sweep_tobe_replaced.index)
+
+                sweep_partial.set_index(
+                    sweep_tobe_replaced.index[: len(sweep_partial.index)],
+                    inplace=True,
+                )
+
+                sweep_template.update(sweep_partial)
+
+                cell_tobe_replaced = cell_template.loc[
+                    cell_template["Light Intensity"] == partial_intens
+                ]
+
+                cell_partial.set_index(cell_tobe_replaced.index, inplace=True)
+
+                cell_template.update(cell_partial)
+
+                y_sweep_values = sweep_template.copy()
+                y_cell_values = cell_template.copy()
+                x_cell_values = x_cell_template.copy()
+
+            else:
+                y_sweep_values = sweep_analysis_values.copy()
+                y_cell_values = cell_analysis_df.copy()
+                x_cell_values = power_curve_stats.loc[
+                    power_curve_stats["Light Duration"] == duration,
+                    ["Light Intensity"],
+                ]
+
+            # pdb.set_trace()
             # onset latency
             curve_stats_fig.add_trace(
                 go.Box(
-                    x=sweep_analysis_values.loc[
-                        sweep_analysis_values["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=sweep_analysis_values.loc[
-                        sweep_analysis_values["Light Duration"] == duration,
+                    x=x_sweep_dict[duration].squeeze(),
+                    y=y_sweep_values.loc[
+                        y_sweep_values["Light Duration"] == duration,
                         ["Onset Latencies (ms)"],
                     ].squeeze(),
                     name=duration,
@@ -756,12 +909,9 @@ class JaneCell(object):
             # onset jitter
             curve_stats_fig.add_trace(
                 go.Bar(
-                    x=power_curve_stats.loc[
-                        power_curve_stats["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=cell_analysis_df.loc[
-                        cell_analysis_df["Light Duration"] == duration,
+                    x=x_cell_values.squeeze(),
+                    y=y_cell_values.loc[
+                        y_cell_values["Light Duration"] == duration,
                         ["Onset Jitter"],
                     ].squeeze(),
                     name=duration,
@@ -775,12 +925,9 @@ class JaneCell(object):
             # mean trace onset latency
             curve_stats_fig.add_trace(
                 go.Bar(
-                    x=power_curve_stats.loc[
-                        power_curve_stats["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=cell_analysis_df.loc[
-                        cell_analysis_df["Light Duration"] == duration,
+                    x=x_cell_values.squeeze(),
+                    y=y_cell_values.loc[
+                        y_cell_values["Light Duration"] == duration,
                         ["Mean Trace Onset Latency (ms)"],
                     ].squeeze(),
                     name=duration,
@@ -794,12 +941,9 @@ class JaneCell(object):
             # time to peak
             curve_stats_fig.add_trace(
                 go.Box(
-                    x=sweep_analysis_values.loc[
-                        sweep_analysis_values["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=sweep_analysis_values.loc[
-                        sweep_analysis_values["Light Duration"] == duration,
+                    x=x_sweep_dict[duration].squeeze(),
+                    y=y_sweep_values.loc[
+                        y_sweep_values["Light Duration"] == duration,
                         ["Time to Peaks (ms)"],
                     ].squeeze(),
                     name=duration,
@@ -813,12 +957,9 @@ class JaneCell(object):
             # mean trace time to peak
             curve_stats_fig.add_trace(
                 go.Bar(
-                    x=power_curve_stats.loc[
-                        power_curve_stats["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=cell_analysis_df.loc[
-                        cell_analysis_df["Light Duration"] == duration,
+                    x=x_cell_values.squeeze(),
+                    y=y_cell_values.loc[
+                        y_cell_values["Light Duration"] == duration,
                         ["Mean Trace Time to Peak (ms)"],
                     ].squeeze(),
                     name=duration,

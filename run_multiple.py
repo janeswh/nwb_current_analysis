@@ -21,9 +21,13 @@ for file in os.listdir(data_folder):
     if file.endswith(".nwb"):
         nwbfile_list.append(file)
 
-for nwbfile_name in nwbfile_list:
+for count, nwbfile_name in enumerate(nwbfile_list):
     run_single(dataset, csvfile, nwbfile_name)
-    print("Analysis for {} done".format(nwbfile_name))
+    print(
+        "Analysis for {} done, #{}/{} cells".format(
+            nwbfile_name, count + 1, len(nwbfile_list)
+        )
+    )
 
 
 # need to assign the same project dataset variable to all cells
