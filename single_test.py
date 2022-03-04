@@ -971,7 +971,11 @@ class JaneCell(object):
             )
 
             # Update xaxis properties
-            curve_stats_fig.update_xaxes(autorange="reversed")
+            # curve_stats_fig.update_xaxes(autorange="reversed")
+            # this defines the intensities order for x-axes
+            curve_stats_fig.update_xaxes(
+                categoryorder="array", categoryarray=np.flip(intensities)
+            )
 
             # Update yaxis properties
             curve_stats_fig.update_yaxes(
