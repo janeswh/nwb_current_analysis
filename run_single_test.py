@@ -65,12 +65,12 @@ def run_single(dataset, csvfile, nwbfile_name):
     if response == True:
 
         summary_plots = cell.graph_curve_stats()
+        cell.export_stats_csv()
     else:
         print("Cell doesn't have response, no response stats plotted")
 
     # 9 saves combined plots as html file, exports stats as csv
     cell.output_html_plots()
-    cell.export_stats_csv()
 
 
 if __name__ == "__main__":
