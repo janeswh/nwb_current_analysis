@@ -33,7 +33,7 @@ for genotype in os.listdir(stats_folder):
 
 # testing loop on one genotype
 
-genotype = "OMP"
+genotype = "Gg8"
 test_stats_folder = os.path.join(
     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
     dataset,
@@ -96,7 +96,7 @@ for count, duration in enumerate(durations):
                 ["Mean Trace Peak (pA)"],
             ].squeeze(),
             name=duration,
-            line=dict(color=color[count]),
+            line=dict(color=color_dict[duration]),
             legendgroup=duration,
         ),
         row=1,
@@ -114,7 +114,7 @@ for count, duration in enumerate(durations):
                 ["Mean Onset Latency (ms)"],
             ].squeeze(),
             name=duration,
-            line=dict(color=color[count]),
+            line=dict(color=color_dict[duration]),
             legendgroup=duration,
         ),
         row=1,
@@ -131,7 +131,7 @@ for count, duration in enumerate(durations):
                 concat_df["Light Duration"] == duration, ["Onset Jitter"],
             ].squeeze(),
             name=duration,
-            marker_color=color[count],
+            line=dict(color=color_dict[duration]),
             legendgroup=duration,
         ),
         row=2,
@@ -149,7 +149,7 @@ for count, duration in enumerate(durations):
                 ["Mean Trace Onset Latency (ms)"],
             ].squeeze(),
             name=duration,
-            marker_color=color[count],
+            line=dict(color=color_dict[duration]),
             legendgroup=duration,
         ),
         row=2,
@@ -167,7 +167,7 @@ for count, duration in enumerate(durations):
                 ["Mean Time to Peak (ms)"],
             ].squeeze(),
             name=duration,
-            line=dict(color=color[count]),
+            line=dict(color=color_dict[duration]),
             legendgroup=duration,
         ),
         row=3,
@@ -185,7 +185,7 @@ for count, duration in enumerate(durations):
                 ["Mean Trace Time to Peak (ms)"],
             ].squeeze(),
             name=duration,
-            marker_color=color[count],
+            line=dict(color=color_dict[duration]),
             legendgroup=duration,
         ),
         row=3,
