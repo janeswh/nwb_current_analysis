@@ -837,6 +837,37 @@ class JaneCell(object):
                         }
                     )
 
+                    # account for cells where there are more than 10 sweeps
+                    # for the partial_intens, need to add additional rows
+                    # to sweep template
+                    if len(sweep_partial) > 10:
+                        repeat_n = len(sweep_partial) - 10
+                        extra_row = pd.DataFrame(
+                            {
+                                "Light Intensity": partial_intens,
+                                "Light Duration": duration,
+                                "Onset Latencies (ms)": [0],
+                                "Time to Peaks (ms)": [0],
+                            }
+                        )
+
+                        last_idx = sweep_template.loc[
+                            sweep_template["Light Intensity"] == partial_intens
+                        ].index[-1]
+                        insert_point = last_idx + 1
+                        to_insert = extra_row.loc[
+                            extra_row.index.repeat(repeat_n)
+                        ]
+
+                        sweep_template = pd.concat(
+                            [
+                                sweep_template.iloc[:insert_point],
+                                to_insert,
+                                sweep_template.iloc[insert_point:],
+                            ]
+                        )
+                        sweep_template.reset_index(drop=True, inplace=True)
+
                     # creating skeletal template for y_cell_values
                     cell_template = pd.DataFrame(
                         {
@@ -847,7 +878,7 @@ class JaneCell(object):
                             "Mean Trace Time to Peak (ms)": np.repeat(0, 5),
                         }
                     )
-
+                    # isolate the sweeps to slot into template
                     cell_partial = cell_analysis_df.loc[
                         cell_analysis_df["Light Duration"] == duration,
                         [
@@ -866,7 +897,7 @@ class JaneCell(object):
                 sweep_tobe_replaced = sweep_template.loc[
                     sweep_template["Light Intensity"] == partial_intens
                 ]
-
+                # pdb.set_trace()
                 sweep_tobe_replaced.index = list(sweep_tobe_replaced.index)
 
                 sweep_partial.set_index(
