@@ -113,11 +113,18 @@ class JaneCell(object):
                 else:
                     nonesc_sweeps.append(int(nonesc_range[i]))
 
+        # pdb.set_trace()
+
         # pulls out depol sweep numbers
         if "Depol sweeps" in self.cell_sweep_info.index:
-            depol_range = self.cell_sweep_info.loc["Depol sweeps"][0].split(
-                ","
-            )
+            if isinstance(self.cell_sweep_info.loc["Depol sweeps"][0], float):
+                depol_range = str(
+                    int(self.cell_sweep_info.loc["Depol sweeps"][0])
+                )
+            else:
+                depol_range = self.cell_sweep_info.loc["Depol sweeps"][
+                    0
+                ].split(",")
             depol_sweeps = []
             for i in range(len(depol_range)):
                 if "-" in depol_range[i]:
@@ -179,7 +186,7 @@ class JaneCell(object):
                 stim_sweep_info = stim_sweep_info[
                     ~stim_sweep_info.index.str.contains("100 ms")
                 ]  # drops 100 ms
-
+        # pdb.set_trace()
         sweeps_dict = {}
 
         # define sweep ranges for each stim set present
@@ -538,7 +545,7 @@ class JaneCell(object):
         cell_analysis_dict = {}
         power_curve_df = pd.DataFrame()
         all_mean_traces = pd.DataFrame()
-
+        # pdb.set_trace()
         for stim_id in range(len(list(self.sweeps_dict))):
             (
                 stim_condition,
