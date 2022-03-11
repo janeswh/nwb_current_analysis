@@ -13,37 +13,37 @@ import glob
 
 # def run_aggregate_stats(dataset):
 
+# def get_summary_stats():
 
-dataset = "non-injected"
-stats_folder = os.path.join(
+dataset = "5dpi"
+dataset_stats_folder = os.path.join(
     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables", dataset
 )
 
-# loop to work on later
+# listing the genotypes in each dataset
+genotypes_list = [
+    genotype.name
+    for genotype in os.scandir(dataset_stats_folder)
+    if genotype.is_dir()
+]
 
-for genotype in os.listdir(stats_folder):
-    file_paths = []
-    for filename in os.listdir(os.path.join(stats_folder, genotype)):
-        if filename.endswith("response_stats.csv"):
-            file_paths.append(os.path.join(stats_folder, genotype, filename))
-    concat_df = pd.concat(
-        [pd.read_csv(file, index_col=None, header=0) for file in file_paths]
-    )
+# testing on one genotype
+genotype = genotypes_list[0]
+
+stats_folder = os.path.join(dataset_stats_folder, genotype)
 
 
+for genotype in genotypes_list:
+    stats_folder = os.path.join(dataset_stats_folder, genotype)
 # testing loop on one genotype
 
 genotype = "Gg8"
-test_stats_folder = os.path.join(
-    "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-    dataset,
-    genotype,
-)
+
 
 file_paths = []
-for filename in os.listdir(os.path.join(test_stats_folder)):
+for filename in os.listdir(os.path.join(stats_folder)):
     if filename.endswith("response_stats.csv"):
-        file_paths.append(os.path.join(stats_folder, genotype, filename))
+        file_paths.append(os.path.join(stats_folder, filename))
 concat_df = pd.concat(
     [pd.read_csv(file, index_col=None, header=0) for file in file_paths]
 )
