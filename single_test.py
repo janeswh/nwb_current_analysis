@@ -1149,7 +1149,11 @@ class JaneCell(object):
         #         if (trace.name in names) else names.add(trace.name))
 
         mean_traces_fig.update_layout(
-            title_text=self.cell_name + ", " + self.genotype,
+            title_text=self.dataset
+            + ", "
+            + self.cell_name
+            + ", "
+            + self.genotype,
             title_x=0.5,
             legend_title_text="Light Duration",
         )
