@@ -24,6 +24,10 @@ class GenotypeSummary(object):
         )
         self.concat_df = self.get_summary_stats()
 
+        self.threshold = None
+        self.stim_conditions = None
+        self.cell_counts = None
+
     def get_summary_stats(self):
         # reads in all the summary stats values
         file_paths = []
@@ -41,39 +45,72 @@ class GenotypeSummary(object):
 
         return concat_df
 
+    def set_latency_threshold(self, threshold):
+        # drops values from concat_df with mean onset latencies above threshold
+
+        self.threshold = threshold
+        self.thresh_concat = self.concat_df[
+            self.concat_df["Mean Onset Latency (ms)"] < self.threshold
+        ]
+
     def calc_summary_avgs(self):
         # this calculates stats grouped by stim conditions
-        self.mean_df = self.concat_df.groupby(
+        self.mean_df = self.thresh_concat.groupby(
             ["Light Intensity", "Light Duration"]
         ).mean()
-        self.sem_df = self.concat_df.groupby(
+        self.sem_df = self.thresh_concat.groupby(
             ["Light Intensity", "Light Duration"]
         ).sem()
 
+    def count_cells(self):
+        # count the number of cells used for each stimulus condition after
+        # thresholding with mean onset latency
+
         # this creates a list of unique stim condition combinations and allows iteration
-        stim_conditions = (
-            self.concat_df[["Light Intensity", "Light Duration"]]
+        self.stim_conditions = (
+            self.thresh_concat[["Light Intensity", "Light Duration"]]
             .drop_duplicates(ignore_index=True)
             .copy()
         )
 
-        zip_conditions = zip(
-            stim_conditions["Light Intensity"],
-            stim_conditions["Light Duration"],
+        conditions_tuples = list(
+            zip(
+                self.stim_conditions["Light Intensity"],
+                self.stim_conditions["Light Duration"],
+            )
         )
 
+        cell_counts = pd.DataFrame()
+        counts_list = []
         # this allows display of individual cell values matching each stim condition
-        for intensity, duration in zip_conditions:
-            indiv_cells_df = self.concat_df[
-                (self.concat_df["Light Intensity"] == intensity)
-                & (self.concat_df["Light Duration"] == duration)
+        for condition in conditions_tuples:            
+            indiv_cells_df = self.thresh_concat[
+                (self.thresh_concat["Light Intensity"] == condition[0])
+                & (self.thresh_concat["Light Duration"] == condition[1])
             ].copy()
+            num_cells = len(indiv_cells_df)
+
+            counts_list.append(num_cells)
+
+            # temp_df = pd.DataFrame(
+            #     {(self.dataset + "/" + self.genotype): num_cells},
+            #     index=condition,
+            # )
+
+            # cell_counts = pd.concat([cell_counts, temp_df])
+
+        cell_counts = pd.DataFrame(
+            {(self.dataset + "/" + self.genotype): counts_list}
+        )
+        cell_counts.index = pd.MultiIndex.from_tuples(conditions_tuples)
+
+        return cell_counts
 
     def plot_averages(self):
 
         # plotting
-        durations = self.concat_df["Light Duration"].unique()
-        intensities = self.concat_df["Light Intensity"].unique()
+        durations = self.thresh_concat["Light Duration"].unique()
+        intensities = self.thresh_concat["Light Intensity"].unique()
         color_dict = {
             " 2 ms": "#7D1935",
             " 1 ms": "#B42B51",
@@ -84,18 +121,18 @@ class GenotypeSummary(object):
             rows=3, cols=2, x_title="Light Intensity (%)"
         )
 
-        x_intensity = self.concat_df["Light Intensity"].unique()
+        x_intensity = self.thresh_concat["Light Intensity"].unique()
 
         for count, duration in enumerate(durations):
             # mean trace peak amplitude
             summary_stats_fig.add_trace(
                 go.Box(
-                    x=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    x=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Light Intensity"],
                     ].squeeze(),
-                    y=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    y=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Mean Trace Peak (pA)"],
                     ].squeeze(),
                     name=duration,
@@ -109,12 +146,12 @@ class GenotypeSummary(object):
             # Mean Onset Latency (ms)
             summary_stats_fig.add_trace(
                 go.Box(
-                    x=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    x=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Light Intensity"],
                     ].squeeze(),
-                    y=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    y=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Mean Onset Latency (ms)"],
                     ].squeeze(),
                     name=duration,
@@ -128,12 +165,12 @@ class GenotypeSummary(object):
             # onset jitter
             summary_stats_fig.add_trace(
                 go.Box(
-                    x=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    x=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Light Intensity"],
                     ].squeeze(),
-                    y=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    y=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Onset Jitter"],
                     ].squeeze(),
                     name=duration,
@@ -147,12 +184,12 @@ class GenotypeSummary(object):
             # mean trace onset latency
             summary_stats_fig.add_trace(
                 go.Box(
-                    x=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    x=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Light Intensity"],
                     ].squeeze(),
-                    y=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    y=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Mean Trace Onset Latency (ms)"],
                     ].squeeze(),
                     name=duration,
@@ -166,12 +203,12 @@ class GenotypeSummary(object):
             # mean time to peak
             summary_stats_fig.add_trace(
                 go.Box(
-                    x=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    x=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Light Intensity"],
                     ].squeeze(),
-                    y=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    y=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Mean Time to Peak (ms)"],
                     ].squeeze(),
                     name=duration,
@@ -185,12 +222,12 @@ class GenotypeSummary(object):
             # mean trace time to peak
             summary_stats_fig.add_trace(
                 go.Box(
-                    x=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    x=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Light Intensity"],
                     ].squeeze(),
-                    y=self.concat_df.loc[
-                        self.concat_df["Light Duration"] == duration,
+                    y=self.thresh_concat.loc[
+                        self.thresh_concat["Light Duration"] == duration,
                         ["Mean Trace Time to Peak (ms)"],
                     ].squeeze(),
                     name=duration,
@@ -247,20 +284,34 @@ class GenotypeSummary(object):
         summary_stats_fig.update_layout(
             legend_title_text="Light Duration",
             title_text=(
-                self.dataset + " " + self.genotype + " summary values"
+                self.dataset
+                + " "
+                + self.genotype
+                + " summary values, "
+                + str(self.threshold)
+                + " mean onset latency threshold"
             ),
             title_x=0.5,
         )
 
-        summary_stats_fig.show()
+        # summary_stats_fig.show()
         self.summary_stats_fig = summary_stats_fig
 
-    def save_summary_stats_fig(self):
+    def save_cell_counts(self):
         """
-        Saves the summary stats plot as one html file
+        Saves the cell counts as csv file.
         """
+        csv_filename = "{}_{}_{}msthresh_cell_counts.csv".format(
+            self.dataset, self.genotype, self.threshold
+        )
+        path = os.path.join(self.genotype_stats_folder, csv_filename)
+        self.cell_counts.to_csv(path, float_format="%8.4f", index=False)
 
-        html_filename = "{}_summary_avgs.html".format(self.genotype)
+    def save_summary_stats_fig(self):
+
+        html_filename = "{}_{}_threshold_summary_avgs.html".format(
+            self.genotype, self.threshold
+        )
         path = os.path.join(self.genotype_figures_folder, html_filename)
 
         self.summary_stats_fig.write_html(
