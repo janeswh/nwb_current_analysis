@@ -17,6 +17,18 @@ def get_datasets(data_folder, ignored):
     return dataset_list
 
 
+def initialize_parameters(data_folder, ignored):
+    # gets the list of datasets from file directory
+    dataset_list = get_datasets(data_folder, ignored)
+    # dataset_list = ["non-injected", "dox_5dpi"]
+
+    # runs stats analysis for each dataset
+    dataset_cell_counts = defaultdict(lambda: defaultdict(dict))
+    threshold_list = [2, 4]
+
+    return dataset_list, dataset_cell_counts, threshold_list
+
+
 def run_dataset_analysis(data_folder, dataset, tables_folder):
     dataset_data_folder = os.path.join(data_folder, dataset)
 
@@ -57,11 +69,27 @@ def get_genotypes(tables_folder, dataset):
     return genotypes_list
 
 
-def check_responses(dataset, genotypes_list):
-    if len(genotypes_list) == 0:
-        return False
-    else:
-        return True
+def get_genotype_summary(
+    dataset, genotypes_list, threshold_list, empty_count_dict
+):
+    for genotype in genotypes_list:
+        genotype_summary = GenotypeSummary(
+            dataset, genotype, tables_folder, figures_folder
+        )
+        genotype_summary.get_summary_stats()
+
+        # counts_dict = {}  # one cell_counts df for each threshold
+        for threshold in threshold_list:
+            genotype_summary.set_latency_threshold(threshold)
+            cell_counts = genotype_summary.count_cells()
+
+            empty_count_dict[dataset][genotype][threshold] = cell_counts
+            # genotype_summary.save_cell_counts()
+            genotype_summary.calc_summary_avgs()
+            genotype_summary.plot_averages()
+            genotype_summary.save_summary_stats_fig()
+
+    return empty_count_dict
 
 
 def get_all_cell_counts(counts_dict, thresholds):
@@ -96,39 +124,19 @@ def save_cell_counts(all_counts, threshold):
 
 
 def main():
-    # gets the list of datasets from file directory
-    dataset_list = get_datasets(data_folder, ignored)
-    # dataset_list = ["non-injected", "dox_5dpi"]
-    datasets_to_count = dataset_list.copy()
-
-    # runs stats analysis for each dataset
-    dataset_cell_counts = defaultdict(lambda: defaultdict(dict))
+    dataset_list, dataset_cell_counts, threshold_list = initialize_parameters(
+        data_folder, ignored
+    )
 
     for dataset_count, dataset in enumerate(dataset_list):
         print("***Starting analysis for {} dataset.***".format(dataset))
         # run_dataset_analysis(
         #     data_folder, dataset, tables_folder,
         # )
-
         genotypes_list = get_genotypes(tables_folder, dataset)
-
-        for genotype in genotypes_list:
-            genotype_summary = GenotypeSummary(
-                dataset, genotype, tables_folder, figures_folder
-            )
-            genotype_summary.get_summary_stats()
-
-            threshold_list = [2, 4]
-            # counts_dict = {}  # one cell_counts df for each threshold
-            for threshold in threshold_list:
-                genotype_summary.set_latency_threshold(threshold)
-                cell_counts = genotype_summary.count_cells()
-
-                dataset_cell_counts[dataset][genotype][threshold] = cell_counts
-                # genotype_summary.save_cell_counts()
-                genotype_summary.calc_summary_avgs()
-                genotype_summary.plot_averages()
-                genotype_summary.save_summary_stats_fig()
+        dataset_cell_counts = get_genotype_summary(
+            dataset, genotypes_list, threshold_list, dataset_cell_counts
+        )
 
         print(
             "***Analysis for {} dataset done, #{}/{} datasets.***".format(
