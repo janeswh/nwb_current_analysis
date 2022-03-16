@@ -5,4 +5,6 @@ ignored = {"esc_unusable"}
 tables_folder = "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables"
 figures_folder = "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/figures"
 
-threshold_list = [2, 4]
+threshold_list = ["nothresh", 2, 4]
+selected_condition = ("100%", " 1 ms")
+
