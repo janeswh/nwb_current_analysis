@@ -649,6 +649,10 @@ class JaneCell(object):
             ],
             axis=1,
         )
+
+        # add cell_name to stats row
+        stats_cleaned.insert(0, "Cell name", self.cell_name)
+
         base_path = os.path.join(
             "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
             self.dataset,
