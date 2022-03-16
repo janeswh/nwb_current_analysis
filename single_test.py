@@ -521,6 +521,9 @@ class JaneCell(object):
 
         # collects measurements into cell dict, nested dict for each stim condition
         stim_dict = {
+            "Cell name": self.cell_name,
+            "Dataset": self.dataset,
+            "Genotype": self.genotype,
             "Raw Peaks (pA)": current_peaks.tolist(),
             "Mean Raw Peaks (pA)": current_peaks_mean,
             "Mean Trace Peak (pA)": mean_trace_peak[0],
@@ -614,6 +617,9 @@ class JaneCell(object):
 
         cell_analysis_df = cell_analysis_df[
             [
+                "Cell name",
+                "Dataset",
+                "Genotype",
                 "Raw Peaks (pA)",
                 "Mean Raw Peaks (pA)",
                 "Mean Trace Peak (pA)",
@@ -668,17 +674,6 @@ class JaneCell(object):
             ],
             axis=1,
         )
-
-        # add cell_name, genotype, dataset to stats row
-        cell_info = pd.DataFrame(
-            {
-                "Cell name": self.cell_name,
-                "Dataset": self.dataset,
-                "Genotype": self.genotype,
-            },
-            index=[0],
-        )
-        stats_cleaned = pd.concat([cell_info, stats_cleaned], axis=1)
 
         base_path = os.path.join(
             "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
