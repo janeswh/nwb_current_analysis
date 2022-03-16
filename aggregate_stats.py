@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.stats import sem
 import plotly.io as pio
+import file_settings
 
 pio.renderers.default = "browser"
 import pdb
@@ -13,14 +14,14 @@ import glob
 
 
 class GenotypeSummary(object):
-    def __init__(self, dataset, genotype, tables_folder, figures_folder):
+    def __init__(self, dataset, genotype):
         self.dataset = dataset
         self.genotype = genotype
         self.genotype_stats_folder = os.path.join(
-            tables_folder, dataset, genotype
+            file_settings.tables_folder, dataset, genotype
         )
         self.genotype_figures_folder = os.path.join(
-            figures_folder, dataset, genotype
+            file_settings.figures_folder, dataset, genotype
         )
         self.concat_df = self.get_summary_stats()
 
@@ -83,7 +84,7 @@ class GenotypeSummary(object):
         cell_counts = pd.DataFrame()
         counts_list = []
         # this allows display of individual cell values matching each stim condition
-        for condition in conditions_tuples:            
+        for condition in conditions_tuples:
             indiv_cells_df = self.thresh_concat[
                 (self.thresh_concat["Light Intensity"] == condition[0])
                 & (self.thresh_concat["Light Duration"] == condition[1])
@@ -317,3 +318,72 @@ class GenotypeSummary(object):
         self.summary_stats_fig.write_html(
             path, full_html=False, include_plotlyjs="cdn"
         )
+
+
+def get_genotypes(dataset):
+    # listing the genotypes in each dataset
+    stats_folder = os.path.join(file_settings.tables_folder, dataset)
+    genotypes_list = [
+        genotype.name
+        for genotype in os.scandir(stats_folder)
+        if genotype.is_dir()
+    ]
+
+    if len(genotypes_list) == 0:
+        print(
+            "{} dataset has no cells with responses, no summary stats calculated.".format(
+                dataset
+            )
+        )
+
+    return genotypes_list
+
+
+def get_genotype_summary(dataset, genotypes_list, empty_count_dict):
+    for genotype in genotypes_list:
+        genotype_summary = GenotypeSummary(dataset, genotype)
+        genotype_summary.get_summary_stats()
+
+        # counts_dict = {}  # one cell_counts df for each threshold
+        for threshold in file_settings.threshold_list:
+            genotype_summary.set_latency_threshold(threshold)
+            cell_counts = genotype_summary.count_cells()
+
+            empty_count_dict[dataset][genotype][threshold] = cell_counts
+            # genotype_summary.save_cell_counts()
+            genotype_summary.calc_summary_avgs()
+            genotype_summary.plot_averages()
+            genotype_summary.save_summary_stats_fig()
+
+    return empty_count_dict
+
+
+def get_all_cell_counts(counts_dict):
+    """
+    Takes the cell counts from all genotypes/datasets and compiles into one 
+    df.
+    """
+
+    for threshold in file_settings.threshold_list:
+        all_counts = pd.DataFrame()
+        # pdb.set_trace()
+
+        for dataset in counts_dict.keys():
+            # use the genotypes found in dict
+            for genotype in counts_dict[dataset].keys():
+                all_counts = pd.concat(
+                    [all_counts, counts_dict[dataset][genotype][threshold]],
+                    axis=1,
+                )
+        all_counts.fillna(0, inplace=True)
+        all_counts = all_counts.astype(int)
+        save_cell_counts(all_counts, threshold)
+
+
+def save_cell_counts(all_counts, threshold):
+    """
+    Takes the cell counts from specified threshold and saves as csv.
+    """
+    csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
+    path = os.path.join(file_settings.tables_folder, csv_filename)
+    all_counts.to_csv(path, float_format="%8.4f")
