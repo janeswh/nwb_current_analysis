@@ -612,6 +612,25 @@ class JaneCell(object):
         cell_analysis_df = pd.DataFrame(self.cell_analysis_dict).T
         cell_analysis_df.index = pd.MultiIndex.from_tuples(self.tuples)
 
+        cell_analysis_df = cell_analysis_df[
+            [
+                "Raw Peaks (pA)",
+                "Mean Raw Peaks (pA)",
+                "Mean Trace Peak (pA)",
+                "Onset Latencies (ms)",
+                "Mean Onset Latency (ms)",
+                "Onset SEM",
+                "Onset Jitter",
+                "Mean Trace Onset Latency (ms)",
+                "Time to Peaks (ms)",
+                "Mean Time to Peak (ms)",
+                "Time to Peak SEM",
+                "Mean Trace Time to Peak (ms)",
+                "Response 2x STD",
+                "Response 3x STD",
+            ]
+        ]
+
         sweep_analysis_values = cell_analysis_df[
             ["Onset Latencies (ms)", "Time to Peaks (ms)"]
         ].copy()
@@ -650,8 +669,16 @@ class JaneCell(object):
             axis=1,
         )
 
-        # add cell_name to stats row
-        stats_cleaned.insert(0, "Cell name", self.cell_name)
+        # add cell_name, genotype, dataset to stats row
+        cell_info = pd.DataFrame(
+            {
+                "Cell name": self.cell_name,
+                "Dataset": self.dataset,
+                "Genotype": self.genotype,
+            },
+            index=[0],
+        )
+        stats_cleaned = pd.concat([cell_info, stats_cleaned], axis=1)
 
         base_path = os.path.join(
             "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
@@ -931,7 +958,6 @@ class JaneCell(object):
                     ["Light Intensity"],
                 ]
 
-            # pdb.set_trace()
             # onset latency
             curve_stats_fig.add_trace(
                 go.Box(
@@ -1119,7 +1145,7 @@ class JaneCell(object):
 
         for intensity_count, intensity in enumerate(intensities):
             for duration_count, duration in enumerate(durations):
-                # pdb.set_trace()
+
                 # plot sweeps from all intensities of one duration
                 y_toplot = traces_to_plot_combined.loc[
                     (traces_to_plot_combined["Light Intensity"] == intensity)
