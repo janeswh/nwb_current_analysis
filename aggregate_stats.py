@@ -50,9 +50,12 @@ class GenotypeSummary(object):
         # drops values from concat_df with mean onset latencies above threshold
 
         self.threshold = threshold
-        self.thresh_concat = self.concat_df[
-            self.concat_df["Mean Onset Latency (ms)"] < self.threshold
-        ]
+        if self.threshold == "nothresh":
+            self.thresh_concat = self.concat_df.copy()
+        else:
+            self.thresh_concat = self.concat_df[
+                self.concat_df["Mean Onset Latency (ms)"] < self.threshold
+            ]
 
     def calc_summary_avgs(self):
         # this calculates stats grouped by stim conditions
@@ -62,6 +65,27 @@ class GenotypeSummary(object):
         self.sem_df = self.thresh_concat.groupby(
             ["Light Intensity", "Light Duration"]
         ).sem()
+
+    def save_summary_avgs(self):
+        # saves avg values for the selected stim condition
+        avgs_to_save = self.thresh_concat[
+            (
+                self.thresh_concat["Light Intensity"]
+                == file_settings.selected_condition[0]
+            )
+            & (
+                self.thresh_concat["Light Duration"]
+                == file_settings.selected_condition[1]
+            )
+        ]
+
+        # pdb.set_trace()
+
+        csv_filename = "{}_{}_{}msthresh_summary_averages.csv".format(
+            self.dataset, self.genotype, self.threshold
+        )
+        path = os.path.join(self.genotype_stats_folder, csv_filename)
+        avgs_to_save.to_csv(path, float_format="%8.4f")
 
     def count_cells(self):
         # count the number of cells used for each stimulus condition after
@@ -92,13 +116,6 @@ class GenotypeSummary(object):
             num_cells = len(indiv_cells_df)
 
             counts_list.append(num_cells)
-
-            # temp_df = pd.DataFrame(
-            #     {(self.dataset + "/" + self.genotype): num_cells},
-            #     index=condition,
-            # )
-
-            # cell_counts = pd.concat([cell_counts, temp_df])
 
         cell_counts = pd.DataFrame(
             {(self.dataset + "/" + self.genotype): counts_list}
@@ -298,16 +315,6 @@ class GenotypeSummary(object):
         # summary_stats_fig.show()
         self.summary_stats_fig = summary_stats_fig
 
-    def save_cell_counts(self):
-        """
-        Saves the cell counts as csv file.
-        """
-        csv_filename = "{}_{}_{}msthresh_cell_counts.csv".format(
-            self.dataset, self.genotype, self.threshold
-        )
-        path = os.path.join(self.genotype_stats_folder, csv_filename)
-        self.cell_counts.to_csv(path, float_format="%8.4f", index=False)
-
     def save_summary_stats_fig(self):
 
         html_filename = "{}_{}_threshold_summary_avgs.html".format(
@@ -352,6 +359,7 @@ def get_genotype_summary(dataset, genotypes_list, empty_count_dict):
             empty_count_dict[dataset][genotype][threshold] = cell_counts
             # genotype_summary.save_cell_counts()
             genotype_summary.calc_summary_avgs()
+            genotype_summary.save_summary_avgs()
             genotype_summary.plot_averages()
             genotype_summary.save_summary_stats_fig()
 
