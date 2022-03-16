@@ -21,8 +21,8 @@ def get_datasets():
 
 def initialize_parameters():
     # gets the list of datasets from file directory
-    dataset_list = get_datasets()
-    # dataset_list = ["non-injected", "dox_5dpi"]
+    # dataset_list = get_datasets()
+    dataset_list = ["dox_5dpi"]
 
     # runs stats analysis for each dataset
     dataset_cell_counts = defaultdict(lambda: defaultdict(dict))
@@ -56,9 +56,7 @@ def main():
 
     for dataset_count, dataset in enumerate(dataset_list):
         print("***Starting analysis for {} dataset.***".format(dataset))
-        # run_dataset_analysis(
-        #     data_folder, dataset, tables_folder,
-        # )
+        run_dataset_analysis(dataset)
         genotypes_list = get_genotypes(dataset)
         dataset_cell_counts = get_genotype_summary(
             dataset, genotypes_list, dataset_cell_counts
