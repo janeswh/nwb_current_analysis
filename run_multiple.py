@@ -21,13 +21,14 @@ def get_datasets():
 
 def initialize_parameters():
     # gets the list of datasets from file directory
-    # dataset_list = get_datasets()
-    dataset_list = ["dox_5dpi"]
+    dataset_list = get_datasets()
+    # dataset_list = ["5dpi"]
 
     # runs stats analysis for each dataset
     dataset_cell_counts = defaultdict(lambda: defaultdict(dict))
+    empty_selected_avgs = defaultdict(lambda: defaultdict(dict))
 
-    return dataset_list, dataset_cell_counts
+    return dataset_list, dataset_cell_counts, empty_selected_avgs
 
 
 def run_dataset_analysis(dataset):
@@ -52,14 +53,18 @@ def run_dataset_analysis(dataset):
 
 
 def main():
-    dataset_list, dataset_cell_counts = initialize_parameters()
+    (
+        dataset_list,
+        dataset_cell_counts,
+        empty_selected_avgs,
+    ) = initialize_parameters()
 
     for dataset_count, dataset in enumerate(dataset_list):
         print("***Starting analysis for {} dataset.***".format(dataset))
-        run_dataset_analysis(dataset)
+        # run_dataset_analysis(dataset)
         genotypes_list = get_genotypes(dataset)
-        dataset_cell_counts = get_genotype_summary(
-            dataset, genotypes_list, dataset_cell_counts
+        dataset_cell_counts, selected_avgs = get_genotype_summary(
+            dataset, genotypes_list, dataset_cell_counts, empty_selected_avgs
         )
 
         print(
@@ -67,7 +72,15 @@ def main():
                 dataset, dataset_count + 1, len(dataset_list)
             )
         )
+
     get_all_cell_counts(dataset_cell_counts)
+    all_selected_averages = collect_selected_averages(dataset_cell_counts)
+
+    for threshold in file_settings.threshold_list:
+        selected_summary_fig = plot_selected_averages(
+            threshold, all_selected_averages
+        )
+        save_selected_summary_fig(threshold, selected_summary_fig)
 
 
 if __name__ == "__main__":
