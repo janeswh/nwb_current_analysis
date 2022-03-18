@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.stats import sem
+from collections import defaultdict
 import plotly.io as pio
 import file_settings
 
@@ -88,9 +89,9 @@ class GenotypeSummary(object):
         path = os.path.join(self.genotype_stats_folder, csv_filename)
         self.selected_avgs.to_csv(path, float_format="%8.4f", index=False)
 
-    def count_cells(self):
-        # count the number of cells used for each stimulus condition after
-        # thresholding with mean onset latency
+    def count_monosyn_cells(self):
+        # count the number of cells with monosynaptic response used for each
+        # stimulus condition after thresholding with mean onset latency
 
         # this creates a list of unique stim condition combinations and allows iteration
         self.stim_conditions = (
@@ -328,6 +329,49 @@ class GenotypeSummary(object):
         )
 
 
+def get_patched_counts(dataset_list):
+    """
+    Gets the number of files (i.e. # of cells patched) in all datasets
+    using sweep_info csv files.
+    """
+
+    recorded_counts = defaultdict(lambda: defaultdict(dict))
+
+    for dataset in dataset_list:
+        csvfile_name = "{}_sweep_info.csv".format(dataset)
+        csvfile = os.path.join(
+            file_settings.tables_folder, dataset, csvfile_name
+        )
+        cell_list = pd.read_csv(csvfile, index_col=0)
+        genotypes = cell_list["Genotype"].unique()
+
+        for genotype in genotypes:
+            genotype_count = len(
+                cell_list.loc[cell_list["Genotype"] == genotype]
+            )
+            genotype_count = pd.DataFrame(
+                {(dataset + "/" + genotype): genotype_count}, index=[0]
+            )
+            recorded_counts[dataset][genotype] = genotype_count
+
+    return recorded_counts
+
+
+def make_patched_counts_df(recorded_counts):
+    all_patched = pd.DataFrame()
+
+    for dataset in recorded_counts.keys():
+        # use the genotypes found in dict
+        for genotype in recorded_counts[dataset].keys():
+            all_patched = pd.concat(
+                [all_patched, recorded_counts[dataset][genotype]], axis=1,
+            )
+            all_patched.fillna(0, inplace=True)
+            all_patched = all_patched.astype(int)
+
+    return all_patched
+
+
 def get_genotypes(dataset):
     # listing the genotypes in each dataset
     stats_folder = os.path.join(file_settings.tables_folder, dataset)
@@ -347,7 +391,7 @@ def get_genotypes(dataset):
     return genotypes_list
 
 
-def get_genotype_summary(dataset, genotypes_list, empty_count_dict):
+def get_genotype_summary(dataset, genotypes_list, monosyn_count_dict):
     for genotype in genotypes_list:
         genotype_summary = GenotypeSummary(dataset, genotype)
         genotype_summary.get_summary_stats()
@@ -355,8 +399,10 @@ def get_genotype_summary(dataset, genotypes_list, empty_count_dict):
         # counts_dict = {}  # one cell_counts df for each threshold
         for threshold in file_settings.threshold_list:
             genotype_summary.set_latency_threshold(threshold)
-            cell_counts = genotype_summary.count_cells()
-            empty_count_dict[dataset][genotype][threshold] = cell_counts
+            monosyn_cell_counts = genotype_summary.count_monosyn_cells()
+            monosyn_count_dict[dataset][genotype][
+                threshold
+            ] = monosyn_cell_counts
 
             genotype_summary.get_summary_avgs()
 
@@ -365,7 +411,7 @@ def get_genotype_summary(dataset, genotypes_list, empty_count_dict):
             genotype_summary.plot_averages()
             genotype_summary.save_summary_stats_fig()
 
-    return empty_count_dict
+    return monosyn_count_dict
 
 
 def collect_selected_averages(counts_dict):
@@ -586,21 +632,24 @@ def save_selected_summary_fig(threshold, selected_summary_fig):
     )
 
 
-def get_all_cell_counts(counts_dict):
+def get_monosyn_cell_counts(monosyn_counts_dict):
     """
-    Takes the cell counts from all genotypes/datasets and compiles into one 
-    df.
+    Takes the monosynaptic cell counts from all genotypes/datasets and 
+    compiles into one df.
     """
 
     for threshold in file_settings.threshold_list:
         all_counts = pd.DataFrame()
         # pdb.set_trace()
 
-        for dataset in counts_dict.keys():
+        for dataset in monosyn_counts_dict.keys():
             # use the genotypes found in dict
-            for genotype in counts_dict[dataset].keys():
+            for genotype in monosyn_counts_dict[dataset].keys():
                 all_counts = pd.concat(
-                    [all_counts, counts_dict[dataset][genotype][threshold]],
+                    [
+                        all_counts,
+                        monosyn_counts_dict[dataset][genotype][threshold],
+                    ],
                     axis=1,
                 )
         all_counts.fillna(0, inplace=True)
@@ -611,19 +660,144 @@ def get_all_cell_counts(counts_dict):
 
 def save_cell_counts(all_counts, threshold):
     """
-    Takes the cell counts from specified threshold and saves as csv.
+    Takes the monosyn cell counts from specified threshold and saves as csv.
     """
     csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
     path = os.path.join(file_settings.tables_folder, csv_filename)
     all_counts.to_csv(path, float_format="%8.4f")
 
 
-def get_response_counts():
+def get_response_proportions(all_counts, response_counts):
     """
     For each threshold, calculates:
     - % of cells that had a response / total # cells recorded in a dataset
     - % of cells that had a response / total # of cells that had a response 
     """
+    # pdb.set_trace()
+    all_counts.drop("dox_3dpi_ctrl/Gg8", axis=1, inplace=True)
 
-    cell_response_counts = {}
+    response_proportions = defaultdict(dict)
 
+    for threshold in file_settings.threshold_list:
+
+        csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
+        csvfile = os.path.join(file_settings.tables_folder, csv_filename)
+        counts_df = pd.read_csv(csvfile, index_col=[0, 1])
+        response_counts = pd.DataFrame(
+            counts_df.loc[file_settings.selected_condition]
+        ).T
+        response_counts.index = [0]  # reset index for division
+        no_response_counts = all_counts - response_counts
+        # no_response_counts.fillna(0, inplace=True)
+
+        # pdb.set_trace()
+        response_proportions[threshold]["response"] = response_counts
+        response_proportions[threshold]["no response"] = no_response_counts
+
+    return response_proportions
+
+
+def plot_response_proportions(response_proportions):
+    # response/no response is a trace
+    thresholds = file_settings.threshold_list.copy()
+    dataset_order = [
+        "non-injected/OMP",
+        "non-injected/Gg8",
+        "3dpi/Gg8",
+        "5dpi/OMP",
+        "5dpi/Gg8",
+        "dox_3dpi/Gg8",
+        "dox_4dpi/Gg8",
+        "dox_5dpi/Gg8",
+    ]
+
+    response_colors = {"no response": "#A7BBC7", "response": "#293B5F"}
+    response_proportions_fig = make_subplots(
+        rows=len(thresholds), cols=1, x_title="Dataset/Genotype"
+    )
+
+    # rearranges threshold for better plotting order
+    thresholds.reverse()
+    thresholds.insert(0, thresholds.pop(thresholds.index("nothresh")))
+    for count, threshold in enumerate(thresholds):
+        for response_type in response_proportions[threshold].keys():
+
+            # pdb.set_trace()
+
+            x_axis = response_proportions[threshold]["response"].columns
+            response_proportions_fig.add_trace(
+                go.Bar(
+                    x=x_axis,
+                    y=response_proportions[threshold][response_type].squeeze(),
+                    name=response_type,
+                    marker_color=response_colors[response_type],
+                    legendgroup=response_type,
+                ),
+                row=count + 1,
+                col=1,
+            )
+
+            response_proportions_fig.update_yaxes(
+                title_text="{} ms latency cutoff cell count".format(threshold)
+                if threshold != "nothresh"
+                else "no onset latency cutoff cell count",
+                row=count + 1,
+                col=1,
+            )
+
+            response_proportions_fig.update_layout(barmode="stack")
+
+    # below is code from stack overflow to hide duplicate legends
+    names = set()
+    response_proportions_fig.for_each_trace(
+        lambda trace: trace.update(showlegend=False)
+        if (trace.name in names)
+        else names.add(trace.name)
+    )
+
+    response_proportions_fig.update_xaxes(
+        categoryorder="array", categoryarray=dataset_order
+    )
+    response_proportions_fig.update_layout(
+        legend_title_text="Cell Responses",
+        title_text=(
+            "Cell Responses by Onset Latency Cut-off".format(threshold)
+        ),
+        title_x=0.5,
+    )
+    response_proportions_fig.show()
+
+
+def save_response_proportions_fig(response_proportions_fig):
+    html_filename = "all_cell_counts.html"
+    path = os.path.join(file_settings.figures_folder, html_filename)
+
+    response_proportions_fig.write_html(
+        path, full_html=False, include_plotlyjs="cdn"
+    )
+
+
+def do_cell_counts(monosyn_cell_counts, all_patched):
+    """
+    All the functions for counting cells with monosynaptic responses
+    """
+    get_monosyn_cell_counts(monosyn_cell_counts)
+    response_proportions = get_response_proportions(
+        all_patched, monosyn_cell_counts
+    )
+    response_proportions_fig = plot_response_proportions(response_proportions)
+    save_response_proportions_fig(response_proportions_fig)
+
+
+def analyze_selected_condition(monosyn_cell_counts):
+    """
+    Pulls out the averages for each cell in the dataset for the selected
+    stim condition (light intensity + duration).
+    """
+    all_selected_averages = collect_selected_averages(monosyn_cell_counts)
+
+    for threshold in file_settings.threshold_list:
+        selected_summary_fig = plot_selected_averages(
+            threshold, all_selected_averages
+        )
+        save_selected_summary_fig(threshold, selected_summary_fig)

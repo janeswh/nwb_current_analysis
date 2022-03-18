@@ -5,9 +5,11 @@ from run_single_test import run_single
 from aggregate_stats import *
 import file_settings
 
-# from single_test import JaneCell
-# from aggregate_stats import GenotypeSummary
 import pdb
+
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
 
 
 def get_datasets():
@@ -19,15 +21,17 @@ def get_datasets():
     return dataset_list
 
 
-def initialize_parameters():
+def get_data_info():
     # gets the list of datasets from file directory
     dataset_list = get_datasets()
     # dataset_list = ["5dpi"]
 
     # runs stats analysis for each dataset
     dataset_cell_counts = defaultdict(lambda: defaultdict(dict))
+    recorded_counts = get_patched_counts(dataset_list)
+    all_patched = make_patched_counts_df(recorded_counts)
 
-    return dataset_list, dataset_cell_counts
+    return dataset_list, dataset_cell_counts, all_patched
 
 
 def run_dataset_analysis(dataset):
@@ -43,7 +47,7 @@ def run_dataset_analysis(dataset):
             nwbfile_list.append(file)
 
     for file_count, nwbfile_name in enumerate(nwbfile_list):
-        run_single(dataset, csvfile, nwbfile_name)
+        # run_single(dataset, csvfile, nwbfile_name)
         print(
             "Analysis for {} done, #{}/{} cells".format(
                 nwbfile_name, file_count + 1, len(nwbfile_list)
@@ -52,14 +56,14 @@ def run_dataset_analysis(dataset):
 
 
 def main():
-    (dataset_list, dataset_cell_counts,) = initialize_parameters()
+    dataset_list, empty_dataset_cell_counts, all_patched = get_data_info()
 
     for dataset_count, dataset in enumerate(dataset_list):
         print("***Starting analysis for {} dataset.***".format(dataset))
-        # run_dataset_analysis(dataset)
+        run_dataset_analysis(dataset)
         genotypes_list = get_genotypes(dataset)
-        dataset_cell_counts = get_genotype_summary(
-            dataset, genotypes_list, dataset_cell_counts
+        monosyn_cell_counts = get_genotype_summary(
+            dataset, genotypes_list, empty_dataset_cell_counts
         )
 
         print(
@@ -68,14 +72,8 @@ def main():
             )
         )
 
-    get_all_cell_counts(dataset_cell_counts)
-    all_selected_averages = collect_selected_averages(dataset_cell_counts)
-
-    for threshold in file_settings.threshold_list:
-        selected_summary_fig = plot_selected_averages(
-            threshold, all_selected_averages
-        )
-        save_selected_summary_fig(threshold, selected_summary_fig)
+    do_cell_counts(monosyn_cell_counts, all_patched)
+    analyze_selected_condition(monosyn_cell_counts)
 
 
 if __name__ == "__main__":
