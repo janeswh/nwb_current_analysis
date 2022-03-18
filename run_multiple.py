@@ -26,9 +26,8 @@ def initialize_parameters():
 
     # runs stats analysis for each dataset
     dataset_cell_counts = defaultdict(lambda: defaultdict(dict))
-    empty_selected_avgs = defaultdict(lambda: defaultdict(dict))
 
-    return dataset_list, dataset_cell_counts, empty_selected_avgs
+    return dataset_list, dataset_cell_counts
 
 
 def run_dataset_analysis(dataset):
@@ -53,18 +52,14 @@ def run_dataset_analysis(dataset):
 
 
 def main():
-    (
-        dataset_list,
-        dataset_cell_counts,
-        empty_selected_avgs,
-    ) = initialize_parameters()
+    (dataset_list, dataset_cell_counts,) = initialize_parameters()
 
     for dataset_count, dataset in enumerate(dataset_list):
         print("***Starting analysis for {} dataset.***".format(dataset))
         # run_dataset_analysis(dataset)
         genotypes_list = get_genotypes(dataset)
-        dataset_cell_counts, selected_avgs = get_genotype_summary(
-            dataset, genotypes_list, dataset_cell_counts, empty_selected_avgs
+        dataset_cell_counts = get_genotype_summary(
+            dataset, genotypes_list, dataset_cell_counts
         )
 
         print(

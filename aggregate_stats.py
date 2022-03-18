@@ -347,9 +347,7 @@ def get_genotypes(dataset):
     return genotypes_list
 
 
-def get_genotype_summary(
-    dataset, genotypes_list, empty_count_dict, empty_selected_avgs
-):
+def get_genotype_summary(dataset, genotypes_list, empty_count_dict):
     for genotype in genotypes_list:
         genotype_summary = GenotypeSummary(dataset, genotype)
         genotype_summary.get_summary_stats()
@@ -360,15 +358,14 @@ def get_genotype_summary(
             cell_counts = genotype_summary.count_cells()
             empty_count_dict[dataset][genotype][threshold] = cell_counts
 
-            selected_avgs = genotype_summary.get_summary_avgs()
-            empty_selected_avgs[dataset][genotype][threshold] = selected_avgs
+            genotype_summary.get_summary_avgs()
 
             # genotype_summary.calc_summary_avgs()
             genotype_summary.save_summary_avgs()
             genotype_summary.plot_averages()
             genotype_summary.save_summary_stats_fig()
 
-    return empty_count_dict, empty_selected_avgs
+    return empty_count_dict
 
 
 def collect_selected_averages(counts_dict):
@@ -619,3 +616,14 @@ def save_cell_counts(all_counts, threshold):
     csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
     path = os.path.join(file_settings.tables_folder, csv_filename)
     all_counts.to_csv(path, float_format="%8.4f")
+
+
+def get_response_counts():
+    """
+    For each threshold, calculates:
+    - % of cells that had a response / total # cells recorded in a dataset
+    - % of cells that had a response / total # of cells that had a response 
+    """
+
+    cell_response_counts = {}
+
