@@ -74,14 +74,14 @@ def run_single(dataset, csvfile, nwbfile_name):
 
 
 if __name__ == "__main__":
-    dataset = "non-injected"
+    dataset = "dox_5dpi"
     csvfile_name = "{}_sweep_info.csv".format(dataset)
     csvfile = os.path.join(
         "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
         dataset,
         csvfile_name,
     )
-    nwbfile_name = "JH20211029_c2.nwb"
+    nwbfile_name = "JH20220126_c3.nwb"
 
     run_single(dataset, csvfile, nwbfile_name)
 

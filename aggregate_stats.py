@@ -667,7 +667,7 @@ def save_cell_counts(all_counts, threshold):
     all_counts.to_csv(path, float_format="%8.4f")
 
 
-def get_response_proportions(all_counts, response_counts):
+def get_response_counts(all_counts, response_counts):
     """
     For each threshold, calculates:
     - % of cells that had a response / total # cells recorded in a dataset
@@ -676,7 +676,7 @@ def get_response_proportions(all_counts, response_counts):
     # pdb.set_trace()
     all_counts.drop("dox_3dpi_ctrl/Gg8", axis=1, inplace=True)
 
-    response_proportions = defaultdict(dict)
+    response_counts_dict = defaultdict(dict)
 
     for threshold in file_settings.threshold_list:
 
@@ -688,16 +688,141 @@ def get_response_proportions(all_counts, response_counts):
         ).T
         response_counts.index = [0]  # reset index for division
         no_response_counts = all_counts - response_counts
-        # no_response_counts.fillna(0, inplace=True)
 
-        # pdb.set_trace()
-        response_proportions[threshold]["response"] = response_counts
-        response_proportions[threshold]["no response"] = no_response_counts
+        response_counts_dict[threshold]["response"] = response_counts
+        response_counts_dict[threshold]["no response"] = no_response_counts
 
-    return response_proportions
+    return response_counts_dict
 
 
-def plot_response_proportions(response_proportions):
+def save_response_counts(all_patched, response_counts_dict):
+    """
+    Puts all the counts for total recorded cells and monosynaptic responding
+    cells for each latency into one df, then export as csv.
+    """
+    all_counts = pd.DataFrame()
+
+    all_patched = all_patched.copy()
+    buffer_info = pd.DataFrame(
+        {"Onset Latency Threshold (ms)": "N/A", "Count Type": "All patched",},
+        index=[0],
+    )
+    all_patched = pd.concat([buffer_info, all_patched], axis=1)
+
+    responses_dict = response_counts_dict.copy()
+    for threshold in file_settings.threshold_list:
+        for response in responses_dict[threshold].keys():
+            info = pd.DataFrame(
+                {
+                    "Onset Latency Threshold (ms)": threshold,
+                    "Count Type": response,
+                },
+                index=[0],
+            )
+            temp_df = pd.concat(
+                [info, responses_dict[threshold][response]], axis=1
+            )
+            all_counts = pd.concat([all_counts, temp_df])
+
+    all_counts = pd.concat([all_patched, all_counts])
+
+    all_counts = all_counts[
+        [
+            "Onset Latency Threshold (ms)",
+            "Count Type",
+            "non-injected/OMP",
+            "non-injected/Gg8",
+            "3dpi/Gg8",
+            "5dpi/OMP",
+            "5dpi/Gg8",
+            "dox_3dpi/Gg8",
+            "dox_4dpi/Gg8",
+            "dox_5dpi/Gg8",
+        ]
+    ]
+
+    csv_filename = "monosynaptic_response_counts.csv".format(threshold)
+    path = os.path.join(file_settings.tables_folder, csv_filename)
+    all_counts.to_csv(path, float_format="%8.4f")
+
+    return all_counts
+
+
+def save_response_proportions(all_counts):
+
+    response_proportions = pd.DataFrame()
+
+    all_patched = all_counts[
+        (all_counts["Count Type"] == "All patched")
+        & (all_counts["Onset Latency Threshold (ms)"] == "N/A")
+    ].copy()
+    # drop str columns for division
+    all_patched.drop(
+        ["Onset Latency Threshold (ms)", "Count Type"], axis=1, inplace=True
+    )
+
+    nothresh_row = all_counts[
+        (all_counts["Count Type"] == "response")
+        & (all_counts["Onset Latency Threshold (ms)"] == "nothresh")
+    ].copy()
+    # drop str columns for division
+    nothresh_row.drop(
+        ["Onset Latency Threshold (ms)", "Count Type"], axis=1, inplace=True
+    )
+
+    for threshold in all_counts["Onset Latency Threshold (ms)"].unique():
+
+        if not threshold in ["nothresh", "N/A"]:
+            response_row = all_counts[
+                (all_counts["Count Type"] == "response")
+                & (all_counts["Onset Latency Threshold (ms)"] == threshold)
+            ]
+            #
+            temp_response = response_row.drop(
+                ["Onset Latency Threshold (ms)", "Count Type"], axis=1
+            ).copy()
+
+            response_allpatched = temp_response / all_patched
+            response_allpatched[
+                "Count Type"
+            ] = "% responses out of all patched"
+            response_allpatched["Onset Latency Threshold (ms)"] = threshold
+
+            response_nothresh = temp_response / nothresh_row
+            response_nothresh[
+                "Count Type"
+            ] = "% responses out of nothresh responses"
+            response_nothresh["Onset Latency Threshold (ms)"] = threshold
+
+            temp_proportions = pd.concat(
+                [response_allpatched, response_nothresh]
+            )
+
+            response_proportions = pd.concat(
+                [response_proportions, temp_proportions]
+            )
+
+    response_proportions = response_proportions[
+        [
+            "Onset Latency Threshold (ms)",
+            "Count Type",
+            "non-injected/OMP",
+            "non-injected/Gg8",
+            "3dpi/Gg8",
+            "5dpi/OMP",
+            "5dpi/Gg8",
+            "dox_3dpi/Gg8",
+            "dox_4dpi/Gg8",
+            "dox_5dpi/Gg8",
+        ]
+    ]
+
+    csv_filename = "monosynaptic_response_proportions.csv".format(threshold)
+    path = os.path.join(file_settings.tables_folder, csv_filename)
+    response_proportions.to_csv(path, float_format="%8.4f")
+
+
+def plot_response_counts(response_counts_dict):
     # response/no response is a trace
     thresholds = file_settings.threshold_list.copy()
     dataset_order = [
@@ -712,7 +837,7 @@ def plot_response_proportions(response_proportions):
     ]
 
     response_colors = {"no response": "#A7BBC7", "response": "#293B5F"}
-    response_proportions_fig = make_subplots(
+    response_counts_fig = make_subplots(
         rows=len(thresholds), cols=1, x_title="Dataset/Genotype"
     )
 
@@ -720,15 +845,15 @@ def plot_response_proportions(response_proportions):
     thresholds.reverse()
     thresholds.insert(0, thresholds.pop(thresholds.index("nothresh")))
     for count, threshold in enumerate(thresholds):
-        for response_type in response_proportions[threshold].keys():
+        for response_type in response_counts_dict[threshold].keys():
 
             # pdb.set_trace()
 
-            x_axis = response_proportions[threshold]["response"].columns
-            response_proportions_fig.add_trace(
+            x_axis = response_counts_dict[threshold]["response"].columns
+            response_counts_fig.add_trace(
                 go.Bar(
                     x=x_axis,
-                    y=response_proportions[threshold][response_type].squeeze(),
+                    y=response_counts_dict[threshold][response_type].squeeze(),
                     name=response_type,
                     marker_color=response_colors[response_type],
                     legendgroup=response_type,
@@ -737,7 +862,7 @@ def plot_response_proportions(response_proportions):
                 col=1,
             )
 
-            response_proportions_fig.update_yaxes(
+            response_counts_fig.update_yaxes(
                 title_text="{} ms latency cutoff cell count".format(threshold)
                 if threshold != "nothresh"
                 else "no onset latency cutoff cell count",
@@ -745,34 +870,36 @@ def plot_response_proportions(response_proportions):
                 col=1,
             )
 
-            response_proportions_fig.update_layout(barmode="stack")
+            response_counts_fig.update_layout(barmode="stack")
 
     # below is code from stack overflow to hide duplicate legends
     names = set()
-    response_proportions_fig.for_each_trace(
+    response_counts_fig.for_each_trace(
         lambda trace: trace.update(showlegend=False)
         if (trace.name in names)
         else names.add(trace.name)
     )
 
-    response_proportions_fig.update_xaxes(
+    response_counts_fig.update_xaxes(
         categoryorder="array", categoryarray=dataset_order
     )
-    response_proportions_fig.update_layout(
+    response_counts_fig.update_layout(
         legend_title_text="Cell Responses",
         title_text=(
             "Cell Responses by Onset Latency Cut-off".format(threshold)
         ),
         title_x=0.5,
     )
-    response_proportions_fig.show()
+    response_counts_fig.show()
+    return response_counts_fig
 
 
-def save_response_proportions_fig(response_proportions_fig):
+def save_response_counts_fig(response_counts_fig):
+
     html_filename = "all_cell_counts.html"
     path = os.path.join(file_settings.figures_folder, html_filename)
 
-    response_proportions_fig.write_html(
+    response_counts_fig.write_html(
         path, full_html=False, include_plotlyjs="cdn"
     )
 
@@ -781,12 +908,20 @@ def do_cell_counts(monosyn_cell_counts, all_patched):
     """
     All the functions for counting cells with monosynaptic responses
     """
+    # counts how many cells had monosynaptic responses after thresholding
+    # with onset latency
     get_monosyn_cell_counts(monosyn_cell_counts)
-    response_proportions = get_response_proportions(
+    response_counts_dict = get_response_counts(
         all_patched, monosyn_cell_counts
     )
-    response_proportions_fig = plot_response_proportions(response_proportions)
-    save_response_proportions_fig(response_proportions_fig)
+
+    # saves the counts and the calculated proportions for all datasets
+    all_counts = save_response_counts(all_patched, response_counts_dict)
+    save_response_proportions(all_counts)
+
+    # plots and save the cell counts
+    response_counts_fig = plot_response_counts(response_counts_dict)
+    save_response_counts_fig(response_counts_fig)
 
 
 def analyze_selected_condition(monosyn_cell_counts):
@@ -801,3 +936,4 @@ def analyze_selected_condition(monosyn_cell_counts):
             threshold, all_selected_averages
         )
         save_selected_summary_fig(threshold, selected_summary_fig)
+
