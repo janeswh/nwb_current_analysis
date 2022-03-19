@@ -1,10 +1,18 @@
 """File settings for running multiple analyses across datasets"""
+from enum import Enum
 
-data_folder = "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data"
-ignored = {"esc_unusable"}
-tables_folder = "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables"
-figures_folder = "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/figures"
 
-threshold_list = ["nothresh", 1, 2, 4]
-selected_condition = ("100%", " 1 ms")
+class FileSettings(object):
+
+    DATA_FOLDER = "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data"
+    IGNORED = {"esc_unusable"}
+    TABLES_FOLDER = (
+        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables"
+    )
+    FIGURES_FOLDER = (
+        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/figures"
+    )
+    SELECTED_CONDITION = ("100%", " 1 ms")
+
+    THRESHOLD_LIST = ["nothresh", 1, 2, 4]
 
