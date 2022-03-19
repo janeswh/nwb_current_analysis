@@ -216,10 +216,7 @@ def save_summary_stats_fig(genotype, threshold, fig_folder, fig):
     fig.write_html(path, full_html=False, include_plotlyjs="cdn")
 
 
-def plot_selected_averages(threshold, selected_avgs_dict):
-
-    # do this for each threshold
-    selected_avgs = selected_avgs_dict[threshold]
+def plot_selected_averages(threshold, selected_avgs):
 
     genotype_color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
 
@@ -401,6 +398,7 @@ def save_selected_summary_fig(threshold, selected_summary_fig):
 def plot_response_counts(response_counts_dict):
     # response/no response is a trace
     thresholds = FileSettings.THRESHOLD_LIST.copy()
+    thresholds[0] = "nothresh"
     dataset_order = [
         "non-injected/OMP",
         "non-injected/Gg8",

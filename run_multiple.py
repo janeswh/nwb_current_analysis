@@ -68,7 +68,7 @@ def main():
         )
 
     do_cell_counts(dataset_cell_counts, all_patched)
-    analyze_selected_condition(dataset_cell_counts)
+    collect_selected_averages(monosyn_cell_counts)
 
 
 if __name__ == "__main__":
