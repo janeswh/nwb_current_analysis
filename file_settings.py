@@ -14,5 +14,4 @@ class FileSettings(object):
     )
     SELECTED_CONDITION = ("100%", " 1 ms")
 
-    THRESHOLD_LIST = ["nothresh", 1, 2, 4]
-
+    THRESHOLD_LIST = [None, 1, 2, 4]

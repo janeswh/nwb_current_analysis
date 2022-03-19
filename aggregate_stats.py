@@ -7,7 +7,8 @@ from plotly.subplots import make_subplots
 from scipy.stats import sem
 from collections import defaultdict
 import plotly.io as pio
-import file_settings
+from file_settings import FileSettings
+from plotting import *
 
 pio.renderers.default = "browser"
 import pdb
@@ -19,10 +20,10 @@ class GenotypeSummary(object):
         self.dataset = dataset
         self.genotype = genotype
         self.genotype_stats_folder = os.path.join(
-            file_settings.tables_folder, dataset, genotype
+            FileSettings.TABLES_FOLDER, dataset, genotype
         )
         self.genotype_figures_folder = os.path.join(
-            file_settings.figures_folder, dataset, genotype
+            FileSettings.FIGURES_FOLDER, dataset, genotype
         )
         self.concat_df = self.get_summary_stats()
 
@@ -50,13 +51,14 @@ class GenotypeSummary(object):
     def set_latency_threshold(self, threshold):
         # drops values from concat_df with mean onset latencies above threshold
 
-        self.threshold = threshold
-        if self.threshold == "nothresh":
+        if threshold is None or threshold is "nothresh":
             self.thresh_concat = self.concat_df.copy()
         else:
             self.thresh_concat = self.concat_df[
-                self.concat_df["Mean Onset Latency (ms)"] < self.threshold
+                self.concat_df["Mean Onset Latency (ms)"] < threshold
             ]
+
+        self.threshold = threshold
 
     def calc_summary_avgs(self):
         # this calculates stats grouped by stim conditions
@@ -69,15 +71,11 @@ class GenotypeSummary(object):
 
     def get_summary_avgs(self):
         # gets avg values for the selected stim condition
+        selected_intensity, selected_duration = FileSettings.SELECTED_CONDITION
+
         self.selected_avgs = self.thresh_concat[
-            (
-                self.thresh_concat["Light Intensity"]
-                == file_settings.selected_condition[0]
-            )
-            & (
-                self.thresh_concat["Light Duration"]
-                == file_settings.selected_condition[1]
-            )
+            (self.thresh_concat["Light Intensity"] == selected_intensity)
+            & (self.thresh_concat["Light Duration"] == selected_duration)
         ].copy()
 
         return self.selected_avgs
@@ -126,208 +124,6 @@ class GenotypeSummary(object):
 
         return cell_counts
 
-    def plot_averages(self):
-
-        # plotting
-        durations = self.thresh_concat["Light Duration"].unique()
-        intensities = self.thresh_concat["Light Intensity"].unique()
-        color_dict = {
-            " 2 ms": "#7D1935",
-            " 1 ms": "#B42B51",
-            " 0.25 ms": "#E63E6D",
-            " 0.01 ms": "#F892B9",
-        }
-        summary_stats_fig = make_subplots(
-            rows=3, cols=2, x_title="Light Intensity (%)"
-        )
-        # pdb.set_trace()
-        x_intensity = self.thresh_concat["Light Intensity"].unique()
-
-        for count, duration in enumerate(durations):
-            # mean trace peak amplitude
-            summary_stats_fig.add_trace(
-                go.Box(
-                    x=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Mean Trace Peak (pA)"],
-                    ].squeeze(),
-                    name=duration,
-                    line=dict(color=color_dict[duration]),
-                    legendgroup=duration,
-                ),
-                row=1,
-                col=1,
-            )
-
-            # Mean Onset Latency (ms)
-            summary_stats_fig.add_trace(
-                go.Box(
-                    x=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Mean Onset Latency (ms)"],
-                    ].squeeze(),
-                    name=duration,
-                    line=dict(color=color_dict[duration]),
-                    legendgroup=duration,
-                ),
-                row=1,
-                col=2,
-            )
-
-            # onset jitter
-            summary_stats_fig.add_trace(
-                go.Box(
-                    x=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Onset Jitter"],
-                    ].squeeze(),
-                    name=duration,
-                    line=dict(color=color_dict[duration]),
-                    legendgroup=duration,
-                ),
-                row=2,
-                col=1,
-            )
-
-            # mean trace onset latency
-            summary_stats_fig.add_trace(
-                go.Box(
-                    x=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Mean Trace Onset Latency (ms)"],
-                    ].squeeze(),
-                    name=duration,
-                    line=dict(color=color_dict[duration]),
-                    legendgroup=duration,
-                ),
-                row=2,
-                col=2,
-            )
-
-            # mean time to peak
-            summary_stats_fig.add_trace(
-                go.Box(
-                    x=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Mean Time to Peak (ms)"],
-                    ].squeeze(),
-                    name=duration,
-                    line=dict(color=color_dict[duration]),
-                    legendgroup=duration,
-                ),
-                row=3,
-                col=1,
-            )
-
-            # mean trace time to peak
-            summary_stats_fig.add_trace(
-                go.Box(
-                    x=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Light Intensity"],
-                    ].squeeze(),
-                    y=self.thresh_concat.loc[
-                        self.thresh_concat["Light Duration"] == duration,
-                        ["Mean Trace Time to Peak (ms)"],
-                    ].squeeze(),
-                    name=duration,
-                    line=dict(color=color_dict[duration]),
-                    legendgroup=duration,
-                ),
-                row=3,
-                col=2,
-            )
-
-            # Update xaxis properties
-            # summary_stats_fig.update_xaxes(autorange="reversed")
-            # this defines the intensities order for x-axes
-            summary_stats_fig.update_xaxes(
-                categoryorder="array", categoryarray=np.flip(intensities)
-            )
-
-            # Update yaxis properties
-            summary_stats_fig.update_yaxes(
-                title_text="Mean Response Amplitude (pA)",
-                row=1,
-                col=1,
-                autorange="reversed",
-            )
-            summary_stats_fig.update_yaxes(
-                title_text="Mean Onset Latency (ms)", row=1, col=2
-            )
-            summary_stats_fig.update_yaxes(
-                title_text="Mean Onset Jitter", row=2, col=1
-            )
-            summary_stats_fig.update_yaxes(
-                title_text="Mean Trace Onset Latency (ms)", row=2, col=2
-            )
-            summary_stats_fig.update_yaxes(
-                title_text="Mean Time to Peak (ms)", row=3, col=1
-            )
-            summary_stats_fig.update_yaxes(
-                title_text="Mean Trace Time to Peak (ms)", row=3, col=2
-            )
-
-        summary_stats_fig.update_layout(
-            # yaxis_title='Onset Latency (ms)',
-            boxmode="group"  # group together boxes of the different traces for each value of x
-        )
-
-        # below is code from stack overflow to hide duplicate legends
-        names = set()
-        summary_stats_fig.for_each_trace(
-            lambda trace: trace.update(showlegend=False)
-            if (trace.name in names)
-            else names.add(trace.name)
-        )
-
-        summary_stats_fig.update_layout(
-            legend_title_text="Light Duration",
-            title_text=(
-                self.dataset
-                + " "
-                + self.genotype
-                + " summary values, "
-                + str(self.threshold)
-                + " mean onset latency threshold"
-            ),
-            title_x=0.5,
-        )
-
-        # summary_stats_fig.show()
-        self.summary_stats_fig = summary_stats_fig
-
-    def save_summary_stats_fig(self):
-
-        html_filename = "{}_{}_threshold_summary_avgs.html".format(
-            self.genotype, self.threshold
-        )
-        path = os.path.join(self.genotype_figures_folder, html_filename)
-
-        self.summary_stats_fig.write_html(
-            path, full_html=False, include_plotlyjs="cdn"
-        )
-
 
 def get_patched_counts(dataset_list):
     """
@@ -340,7 +136,7 @@ def get_patched_counts(dataset_list):
     for dataset in dataset_list:
         csvfile_name = "{}_sweep_info.csv".format(dataset)
         csvfile = os.path.join(
-            file_settings.tables_folder, dataset, csvfile_name
+            FileSettings.TABLES_FOLDER, dataset, csvfile_name
         )
         cell_list = pd.read_csv(csvfile, index_col=0)
         genotypes = cell_list["Genotype"].unique()
@@ -374,7 +170,7 @@ def make_patched_counts_df(recorded_counts):
 
 def get_genotypes(dataset):
     # listing the genotypes in each dataset
-    stats_folder = os.path.join(file_settings.tables_folder, dataset)
+    stats_folder = os.path.join(FileSettings.TABLES_FOLDER, dataset)
     genotypes_list = [
         genotype.name
         for genotype in os.scandir(stats_folder)
@@ -391,48 +187,60 @@ def get_genotypes(dataset):
     return genotypes_list
 
 
-def get_genotype_summary(dataset, genotypes_list, monosyn_count_dict):
+def get_genotype_summary(dataset, genotypes_list):
+    monosyn_count_dict = defaultdict(dict)
     for genotype in genotypes_list:
         genotype_summary = GenotypeSummary(dataset, genotype)
         genotype_summary.get_summary_stats()
 
         # counts_dict = {}  # one cell_counts df for each threshold
-        for threshold in file_settings.threshold_list:
+        for threshold in FileSettings.THRESHOLD_LIST:
+            if threshold is None:
+                threshold = "nothresh"
             genotype_summary.set_latency_threshold(threshold)
             monosyn_cell_counts = genotype_summary.count_monosyn_cells()
-            monosyn_count_dict[dataset][genotype][
-                threshold
-            ] = monosyn_cell_counts
+            monosyn_count_dict[genotype][threshold] = monosyn_cell_counts
 
             genotype_summary.get_summary_avgs()
 
             # genotype_summary.calc_summary_avgs()
             genotype_summary.save_summary_avgs()
-            genotype_summary.plot_averages()
-            genotype_summary.save_summary_stats_fig()
+
+            averages_fig = plot_averages(
+                genotype_summary.dataset,
+                genotype_summary.genotype,
+                threshold,
+                genotype_summary.thresh_concat,
+            )
+
+            save_summary_stats_fig(
+                genotype_summary.genotype,
+                threshold,
+                genotype_summary.genotype_figures_folder,
+                averages_fig,
+            )
 
     return monosyn_count_dict
 
 
 def collect_selected_averages(counts_dict):
     all_selected_averages = {}
-    for threshold in file_settings.threshold_list:
-        # pdb.set_trace()
+    for threshold in FileSettings.THRESHOLD_LIST:
+        if threshold is None:
+            threshold = "nothresh"
         file_paths = []
         for dataset in counts_dict.keys():
             # use the genotypes found in dict
             for genotype in counts_dict[dataset].keys():
                 for filename in os.listdir(
-                    os.path.join(
-                        file_settings.tables_folder, dataset, genotype
-                    )
+                    os.path.join(FileSettings.TABLES_FOLDER, dataset, genotype)
                 ):
                     if filename.endswith(
                         "{}msthresh_summary_averages.csv".format(threshold)
                     ):
                         file_paths.append(
                             os.path.join(
-                                file_settings.tables_folder,
+                                FileSettings.TABLES_FOLDER,
                                 dataset,
                                 genotype,
                                 filename,
@@ -450,195 +258,14 @@ def collect_selected_averages(counts_dict):
     return all_selected_averages
 
 
-def plot_selected_averages(threshold, selected_avgs_dict):
-
-    # do this for each threshold
-    selected_avgs = selected_avgs_dict[threshold]
-
-    genotype_color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
-
-    selected_summary_fig = make_subplots(rows=3, cols=2, x_title="Dataset")
-
-    genotypes = selected_avgs["Genotype"].unique()
-
-    # pdb.set_trace()
-    for genotype in genotypes:
-
-        x_datasets = selected_avgs.loc[selected_avgs["Genotype"] == genotype][
-            "Dataset"
-        ]
-
-        # mean trace peak amplitude
-        selected_summary_fig.add_trace(
-            go.Box(
-                x=x_datasets,
-                y=selected_avgs.loc[selected_avgs["Genotype"] == genotype][
-                    "Mean Trace Peak (pA)"
-                ].squeeze(),
-                name=genotype,
-                line=dict(color=genotype_color[genotype]),
-                legendgroup=genotype,
-            ),
-            row=1,
-            col=1,
-        )
-
-        # Mean Onset Latency (ms)
-        selected_summary_fig.add_trace(
-            go.Box(
-                x=x_datasets,
-                y=selected_avgs.loc[selected_avgs["Genotype"] == genotype][
-                    "Mean Onset Latency (ms)"
-                ].squeeze(),
-                name=genotype,
-                line=dict(color=genotype_color[genotype]),
-                legendgroup=genotype,
-            ),
-            row=1,
-            col=2,
-        )
-
-        # onset jitter
-        selected_summary_fig.add_trace(
-            go.Box(
-                x=x_datasets,
-                y=selected_avgs.loc[selected_avgs["Genotype"] == genotype][
-                    "Onset Jitter"
-                ].squeeze(),
-                name=genotype,
-                line=dict(color=genotype_color[genotype]),
-                legendgroup=genotype,
-            ),
-            row=2,
-            col=1,
-        )
-
-        # mean trace onset latency
-        selected_summary_fig.add_trace(
-            go.Box(
-                x=x_datasets,
-                y=selected_avgs.loc[selected_avgs["Genotype"] == genotype][
-                    "Mean Trace Onset Latency (ms)"
-                ].squeeze(),
-                name=genotype,
-                line=dict(color=genotype_color[genotype]),
-                legendgroup=genotype,
-            ),
-            row=2,
-            col=2,
-        )
-
-        # mean time to peak
-        selected_summary_fig.add_trace(
-            go.Box(
-                x=x_datasets,
-                y=selected_avgs.loc[selected_avgs["Genotype"] == genotype][
-                    "Mean Time to Peak (ms)"
-                ].squeeze(),
-                name=genotype,
-                line=dict(color=genotype_color[genotype]),
-                legendgroup=genotype,
-            ),
-            row=3,
-            col=1,
-        )
-
-        # mean trace time to peak
-        selected_summary_fig.add_trace(
-            go.Box(
-                x=x_datasets,
-                y=selected_avgs.loc[selected_avgs["Genotype"] == genotype][
-                    "Mean Trace Time to Peak (ms)"
-                ].squeeze(),
-                name=genotype,
-                line=dict(color=genotype_color[genotype]),
-                legendgroup=genotype,
-            ),
-            row=3,
-            col=2,
-        )
-
-        # Update xaxis properties
-        # selected_summary_fig.update_xaxes(autorange="reversed")
-        # this defines the dataset order for x-axes
-        dataset_order = [
-            "non-injected",
-            "3dpi",
-            "5dpi",
-            "dox_3dpi",
-            "dox_4dpi",
-            "dox_5dpi",
-        ]
-
-        selected_summary_fig.update_xaxes(
-            categoryorder="array", categoryarray=dataset_order
-        )
-
-        # Update yaxis properties
-        selected_summary_fig.update_yaxes(
-            title_text="Mean Response Amplitude (pA)",
-            row=1,
-            col=1,
-            autorange="reversed",
-        )
-        selected_summary_fig.update_yaxes(
-            title_text="Mean Onset Latency (ms)", row=1, col=2
-        )
-        selected_summary_fig.update_yaxes(
-            title_text="Mean Onset Jitter", row=2, col=1
-        )
-        selected_summary_fig.update_yaxes(
-            title_text="Mean Trace Onset Latency (ms)", row=2, col=2
-        )
-        selected_summary_fig.update_yaxes(
-            title_text="Mean Time to Peak (ms)", row=3, col=1
-        )
-        selected_summary_fig.update_yaxes(
-            title_text="Mean Trace Time to Peak (ms)", row=3, col=2
-        )
-
-    selected_summary_fig.update_layout(
-        # yaxis_title='Onset Latency (ms)',
-        boxmode="group"  # group together boxes of the different traces for each value of x
-    )
-
-    # below is code from stack overflow to hide duplicate legends
-    names = set()
-    selected_summary_fig.for_each_trace(
-        lambda trace: trace.update(showlegend=False)
-        if (trace.name in names)
-        else names.add(trace.name)
-    )
-
-    selected_summary_fig.update_layout(
-        legend_title_text="Genotype",
-        title_text=(
-            "OMP vs. Gg8, {} ms onset latency threshold".format(threshold)
-        ),
-        title_x=0.5,
-    )
-
-    # selected_summary_fig.show()
-    return selected_summary_fig
-
-
-def save_selected_summary_fig(threshold, selected_summary_fig):
-
-    html_filename = "{}_ms_threshold_datasets_summary.html".format(threshold)
-    path = os.path.join(file_settings.figures_folder, html_filename)
-
-    selected_summary_fig.write_html(
-        path, full_html=False, include_plotlyjs="cdn"
-    )
-
-
 def get_monosyn_cell_counts(monosyn_counts_dict):
     """
     Takes the monosynaptic cell counts from all genotypes/datasets and 
     compiles into one df.
     """
 
-    for threshold in file_settings.threshold_list:
+    for threshold in FileSettings.THRESHOLD_LIST:
+        threshold = threshold if threshold else "nothresh"
         all_counts = pd.DataFrame()
         # pdb.set_trace()
 
@@ -663,7 +290,7 @@ def save_cell_counts(all_counts, threshold):
     Takes the monosyn cell counts from specified threshold and saves as csv.
     """
     csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
-    path = os.path.join(file_settings.tables_folder, csv_filename)
+    path = os.path.join(FileSettings.TABLES_FOLDER, csv_filename)
     all_counts.to_csv(path, float_format="%8.4f")
 
 
@@ -678,13 +305,15 @@ def get_response_counts(all_counts, response_counts):
 
     response_counts_dict = defaultdict(dict)
 
-    for threshold in file_settings.threshold_list:
+    for threshold in FileSettings.THRESHOLD_LIST:
+        threshold = threshold if threshold else "nothresh"
+        # threshold = "nothresh" if threshold is None else threshold
 
         csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
-        csvfile = os.path.join(file_settings.tables_folder, csv_filename)
+        csvfile = os.path.join(FileSettings.TABLES_FOLDER, csv_filename)
         counts_df = pd.read_csv(csvfile, index_col=[0, 1])
         response_counts = pd.DataFrame(
-            counts_df.loc[file_settings.selected_condition]
+            counts_df.loc[FileSettings.SELECTED_CONDITION]
         ).T
         response_counts.index = [0]  # reset index for division
         no_response_counts = all_counts - response_counts
@@ -695,7 +324,7 @@ def get_response_counts(all_counts, response_counts):
     return response_counts_dict
 
 
-def save_response_counts(all_patched, response_counts_dict):
+def get_response_counts_df(all_patched, response_counts_dict):
     """
     Puts all the counts for total recorded cells and monosynaptic responding
     cells for each latency into one df, then export as csv.
@@ -710,7 +339,9 @@ def save_response_counts(all_patched, response_counts_dict):
     all_patched = pd.concat([buffer_info, all_patched], axis=1)
 
     responses_dict = response_counts_dict.copy()
-    for threshold in file_settings.threshold_list:
+    for threshold in FileSettings.THRESHOLD_LIST:
+        if threshold is None:
+            threshold = "nothresh"
         for response in responses_dict[threshold].keys():
             info = pd.DataFrame(
                 {
@@ -741,11 +372,14 @@ def save_response_counts(all_patched, response_counts_dict):
         ]
     ]
 
-    csv_filename = "monosynaptic_response_counts.csv".format(threshold)
-    path = os.path.join(file_settings.tables_folder, csv_filename)
-    all_counts.to_csv(path, float_format="%8.4f")
-
     return all_counts
+
+
+def save_response_counts(df_counts):
+
+    csv_filename = "monosynaptic_response_counts.csv"
+    path = os.path.join(FileSettings.TABLES_FOLDER, csv_filename)
+    df_counts.to_csv(path, float_format="%8.4f")
 
 
 def save_response_proportions(all_counts):
@@ -818,90 +452,8 @@ def save_response_proportions(all_counts):
     ]
 
     csv_filename = "monosynaptic_response_proportions.csv".format(threshold)
-    path = os.path.join(file_settings.tables_folder, csv_filename)
+    path = os.path.join(FileSettings.TABLES_FOLDER, csv_filename)
     response_proportions.to_csv(path, float_format="%8.4f")
-
-
-def plot_response_counts(response_counts_dict):
-    # response/no response is a trace
-    thresholds = file_settings.threshold_list.copy()
-    dataset_order = [
-        "non-injected/OMP",
-        "non-injected/Gg8",
-        "3dpi/Gg8",
-        "5dpi/OMP",
-        "5dpi/Gg8",
-        "dox_3dpi/Gg8",
-        "dox_4dpi/Gg8",
-        "dox_5dpi/Gg8",
-    ]
-
-    response_colors = {"no response": "#A7BBC7", "response": "#293B5F"}
-    response_counts_fig = make_subplots(
-        rows=len(thresholds), cols=1, x_title="Dataset/Genotype"
-    )
-
-    # rearranges threshold for better plotting order
-    thresholds.reverse()
-    thresholds.insert(0, thresholds.pop(thresholds.index("nothresh")))
-    for count, threshold in enumerate(thresholds):
-        for response_type in response_counts_dict[threshold].keys():
-
-            # pdb.set_trace()
-
-            x_axis = response_counts_dict[threshold]["response"].columns
-            response_counts_fig.add_trace(
-                go.Bar(
-                    x=x_axis,
-                    y=response_counts_dict[threshold][response_type].squeeze(),
-                    name=response_type,
-                    marker_color=response_colors[response_type],
-                    legendgroup=response_type,
-                ),
-                row=count + 1,
-                col=1,
-            )
-
-            response_counts_fig.update_yaxes(
-                title_text="{} ms latency cutoff cell count".format(threshold)
-                if threshold != "nothresh"
-                else "no onset latency cutoff cell count",
-                row=count + 1,
-                col=1,
-            )
-
-            response_counts_fig.update_layout(barmode="stack")
-
-    # below is code from stack overflow to hide duplicate legends
-    names = set()
-    response_counts_fig.for_each_trace(
-        lambda trace: trace.update(showlegend=False)
-        if (trace.name in names)
-        else names.add(trace.name)
-    )
-
-    response_counts_fig.update_xaxes(
-        categoryorder="array", categoryarray=dataset_order
-    )
-    response_counts_fig.update_layout(
-        legend_title_text="Cell Responses",
-        title_text=(
-            "Cell Responses by Onset Latency Cut-off".format(threshold)
-        ),
-        title_x=0.5,
-    )
-    response_counts_fig.show()
-    return response_counts_fig
-
-
-def save_response_counts_fig(response_counts_fig):
-
-    html_filename = "all_cell_counts.html"
-    path = os.path.join(file_settings.figures_folder, html_filename)
-
-    response_counts_fig.write_html(
-        path, full_html=False, include_plotlyjs="cdn"
-    )
 
 
 def do_cell_counts(monosyn_cell_counts, all_patched):
@@ -916,7 +468,8 @@ def do_cell_counts(monosyn_cell_counts, all_patched):
     )
 
     # saves the counts and the calculated proportions for all datasets
-    all_counts = save_response_counts(all_patched, response_counts_dict)
+    all_counts = get_response_counts_df(all_patched, response_counts_dict)
+    save_response_counts(all_counts)
     save_response_proportions(all_counts)
 
     # plots and save the cell counts
@@ -931,7 +484,9 @@ def analyze_selected_condition(monosyn_cell_counts):
     """
     all_selected_averages = collect_selected_averages(monosyn_cell_counts)
 
-    for threshold in file_settings.threshold_list:
+    for threshold in FileSettings.THRESHOLD_LIST:
+        if threshold is None:
+            threshold = "nothresh"
         selected_summary_fig = plot_selected_averages(
             threshold, all_selected_averages
         )
