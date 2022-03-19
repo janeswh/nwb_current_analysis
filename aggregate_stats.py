@@ -81,8 +81,8 @@ class GenotypeSummary(object):
         return self.selected_avgs
 
     def save_summary_avgs(self):
-        csv_filename = "{}_{}_{}msthresh_summary_averages.csv".format(
-            self.dataset, self.genotype, self.threshold
+        csv_filename = "{}_{}_{}_thresh_summary_averages.csv".format(
+            self.dataset, self.genotype, thresh_prefix(self.threshold)
         )
         path = os.path.join(self.genotype_stats_folder, csv_filename)
         self.selected_avgs.to_csv(path, float_format="%8.4f", index=False)
@@ -237,7 +237,9 @@ def collect_selected_averages(counts_dict):
                     os.path.join(FileSettings.TABLES_FOLDER, dataset, genotype)
                 ):
                     if filename.endswith(
-                        "{}msthresh_summary_averages.csv".format(threshold)
+                        "{}_thresh_summary_averages.csv".format(
+                            thresh_prefix(threshold)
+                        )
                     ):
                         file_paths.append(
                             os.path.join(
@@ -292,10 +294,7 @@ def save_cell_counts(all_counts, threshold):
     """
     Takes the monosyn cell counts from specified threshold and saves as csv.
     """
-    if threshold is "nothresh":
-        csv_filename = "nothresh_cell_counts.csv"
-    else:
-        csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
+    csv_filename = "{}_thresh_cell_counts.csv".format(thresh_prefix(threshold))
     path = os.path.join(FileSettings.TABLES_FOLDER, csv_filename)
     all_counts.to_csv(path, float_format="%8.4f")
 
@@ -306,7 +305,7 @@ def get_response_counts(threshold, all_counts, response_counts):
     - % of cells that had a response / total # cells recorded in a dataset
     - % of cells that had a response / total # of cells that had a response 
     """
-    csv_filename = "{}ms_thresh_cell_counts.csv".format(threshold)
+    csv_filename = "{}_thresh_cell_counts.csv".format(thresh_prefix(threshold))
     csvfile = os.path.join(FileSettings.TABLES_FOLDER, csv_filename)
     counts_df = pd.read_csv(csvfile, index_col=[0, 1])
     response_counts = pd.DataFrame(
@@ -417,7 +416,7 @@ def save_response_proportions(all_counts):
         ]
     ]
 
-    csv_filename = "monosynaptic_response_proportions.csv".format(threshold)
+    csv_filename = "monosynaptic_response_proportions.csv"
     path = os.path.join(FileSettings.TABLES_FOLDER, csv_filename)
     response_proportions.to_csv(path, float_format="%8.4f")
 
@@ -482,3 +481,11 @@ def do_cell_counts(monosyn_cell_counts, all_patched):
     response_counts_fig = plot_response_counts(response_counts_dict)
     save_response_counts_fig(response_counts_fig)
 
+
+def thresh_prefix(threshold):
+    if threshold == "nothresh" or threshold is None:
+        prefix = "no_threshold"
+    else:
+        prefix = "{}ms".format(threshold)
+
+    return prefix
