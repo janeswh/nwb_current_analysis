@@ -490,7 +490,6 @@ class JaneCell(object):
         Puts baseline-subtracted NBQX wash-in traces into a df
         """
         sweeps_dict = self.drug_sweeps_dict
-
         traces = sweeps_dict["NBQX wash-in"]
         # mean_trace = traces.mean(axis=1)
 

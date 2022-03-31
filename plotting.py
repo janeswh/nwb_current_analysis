@@ -483,7 +483,7 @@ def save_response_counts_fig(response_counts_fig):
     )
 
 
-def plot_example_traces(trace1, trace2, type):
+def plot_example_traces(trace1, trace2, type, condition_exception=False):
     """
     Plots two mean traces on one plot for paper figures. Takes two traces as
     dfs and their type (e.g. ctrl vs. NBQX, Gg8 vs. OMP). Trace 1 is always
@@ -491,6 +491,7 @@ def plot_example_traces(trace1, trace2, type):
     """
     # sets background color to white
     layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
+
     intensity, duration = FileSettings.SELECTED_CONDITION
 
     # sets Trace 1 values
@@ -518,6 +519,10 @@ def plot_example_traces(trace1, trace2, type):
         trace2_x = trace2.loc[500.00:700.00].index
 
     elif type == "genotype":
+        # chooses different condition for cell that doesn't have 100%, 1 ms
+        if condition_exception is True:
+            intensity = "50%"
+            duration = " 1 ms"
         type_names = ["OMP", "Gg8"]
         color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
         trace2_to_plot = trace2.loc[
@@ -583,7 +588,7 @@ def plot_example_traces(trace1, trace2, type):
     return example_traces_fig, example_traces_noaxes
 
 
-def save_example_traces_figs(axes, noaxes, type):
+def save_example_traces_figs(axes, noaxes, type, cell_name=None):
     """
     Saves the example traces figs as static png file
     """
@@ -591,8 +596,11 @@ def save_example_traces_figs(axes, noaxes, type):
     if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
         os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
     if type == "drug":
-        axes_filename = "NBQX_example_traces_axes.png"
-        noaxes_filename = "NBQX_example_traces_noaxes.png"
+        axes_filename = "{}_NBQX_example_traces_axes.png".format(cell_name)
+        noaxes_filename = "{}_NBQX_example_traces_noaxes.png".format(cell_name)
+    elif type == "genotype":
+        axes_filename = "OMPvGg8_traces_axes.png"
+        noaxes_filename = "OMPvGg8_traces_noaxes.png"
 
     axes.write_image(
         os.path.join(FileSettings.PAPER_FIGURES_FOLDER, axes_filename)
