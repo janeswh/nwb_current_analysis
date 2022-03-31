@@ -12,6 +12,9 @@ class FileSettings(object):
     FIGURES_FOLDER = (
         "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/figures"
     )
+    PAPER_FIGURES_FOLDER = (
+        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/paper_figures"
+    )
     SELECTED_CONDITION = ("100%", " 1 ms")
 
     THRESHOLD_LIST = [None, 1, 2, 4]

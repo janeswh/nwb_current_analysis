@@ -29,6 +29,7 @@ class JaneCell(object):
         self.nwbfile = nwbfile
         self.file_name = nwbfile_name
         self.raw_df = None
+        self.drug_sweeps_dict = None
         self.sweeps_dict = None
 
         self.cell_analysis_dict = None
@@ -155,6 +156,40 @@ class JaneCell(object):
 
         else:
             return False, None
+
+    def make_drug_sweeps_dict(self):
+        """
+        Create dict with with stim name as keys, VC data as values - just
+        for NBQX wash-in sweeps. Only useful for paper_figs script.
+        """
+        drug_sweeps_info = self.cell_sweep_info.filter(
+            like="NBQX wash-in", axis=0
+        )
+
+        drug_sweeps_dict = {}
+        for i in range(len(drug_sweeps_info.index)):
+            stim_name = drug_sweeps_info.index[i]
+            stim_range = drug_sweeps_info.iloc[i].str.split(",")[0]
+            stim_sweeps = []
+
+            for j in range(len(stim_range)):
+                if "-" in stim_range[j]:
+                    r_start = int(stim_range[j].split("-")[0])
+                    r_end = int(stim_range[j].split("-")[1]) + 1
+                    all_sweeps = list(range(r_start, r_end))
+                    stim_sweeps.extend(all_sweeps)
+                else:
+                    stim_sweeps.append(int(stim_range[j][0]))
+
+            stim_sweeps_VC = self.raw_df[
+                self.raw_df.columns.intersection(set(stim_sweeps))
+            ]
+            drug_sweeps_dict[stim_name] = stim_sweeps_VC
+
+        # drop keys with empty dataframes
+        self.drug_sweeps_dict = {
+            k: v for (k, v) in drug_sweeps_dict.items() if not v.empty
+        }
 
     def make_sweeps_dict(self):
         """
@@ -450,12 +485,45 @@ class JaneCell(object):
 
         return responses
 
+    def extract_drug_sweeps(self):
+        """
+        Puts baseline-subtracted NBQX wash-in traces into a df
+        """
+        sweeps_dict = self.drug_sweeps_dict
+
+        traces = sweeps_dict["NBQX wash-in"]
+        # mean_trace = traces.mean(axis=1)
+
+        # filter traces
+        traces_filtered = self.filter_traces(traces)
+        mean_trace_filtered = pd.DataFrame(traces_filtered.mean(axis=1))
+
+        # convert time to ms
+        time = np.arange(0, len(traces) / FS, 1 / FS)
+        mean_trace_filtered.index = time
+        traces_filtered.index = time
+
+        # find mean baseline, defined as the last 3s of the sweep
+        baseline = self.calculate_mean_baseline(
+            traces_filtered, baseline_start=100, baseline_end=450
+        )
+        mean_baseline = self.calculate_mean_baseline(
+            mean_trace_filtered, baseline_start=100, baseline_end=450
+        )
+
+        # calculates the baseline-subtracted mean trace for plotting purposes
+        sub_mean_trace = mean_trace_filtered - mean_baseline
+
+        return sub_mean_trace
+
     def calculate_stim_stats(self, stim_id):
         sweeps_dict = self.sweeps_dict
 
         stim_condition = list(sweeps_dict)[stim_id]
         traces = list(sweeps_dict.values())[stim_id]
         # mean_trace = traces.mean(axis=1)
+
+        # pdb.set_trace()
 
         """ Run the below for each set of stim sweeps """
 
@@ -1097,6 +1165,8 @@ class JaneCell(object):
         )
 
         self.mean_trace_df = mean_trace_df
+
+        return mean_trace_df
 
     def graph_response_trace(self):
         """

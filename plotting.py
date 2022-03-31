@@ -3,7 +3,12 @@ import os
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.graph_objects import Layout
 from plotly.subplots import make_subplots
+import plotly.io as pio
+
+pio.kaleido.scope.default_scale = 5
+pio.kaleido.scope.default_format = "png"
 from scipy.stats import sem
 from collections import defaultdict
 import plotly.io as pio
@@ -476,3 +481,124 @@ def save_response_counts_fig(response_counts_fig):
     response_counts_fig.write_html(
         path, full_html=False, include_plotlyjs="cdn"
     )
+
+
+def plot_example_traces(trace1, trace2, type):
+    """
+    Plots two mean traces on one plot for paper figures. Takes two traces as
+    dfs and their type (e.g. ctrl vs. NBQX, Gg8 vs. OMP). Trace 1 is always
+    control or OMP, Trace 2 is NBQX or Gg8.
+    """
+    # sets background color to white
+    layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
+    intensity, duration = FileSettings.SELECTED_CONDITION
+
+    # sets Trace 1 values
+    stim_columns = trace1.loc[:, ["Light Intensity", "Light Duration"]]
+    trace1_to_plot = trace1.loc[
+        :, 500.00:700.00
+    ]  # only plots first 400-1000 ms
+
+    trace1_to_plot_combined = pd.concat([stim_columns, trace1_to_plot], axis=1)
+
+    trace1_y_toplot = trace1_to_plot_combined.loc[
+        (trace1_to_plot_combined["Light Intensity"] == intensity)
+        & (trace1_to_plot_combined["Light Duration"] == duration),
+        500.00::,
+    ].squeeze()
+
+    # sets trace colors and Trace 2 values according to type of traces
+    if type == "drug":
+        type_names = ["Control", "NBQX"]
+        color = {"Control": "#7a81ff", "NBQX": "#EE251F"}
+        trace2_y_toplot = trace2.loc[
+            500.00:700.00
+        ].squeeze()  # only plots first 400-1000 ms
+
+        trace2_x = trace2.loc[500.00:700.00].index
+
+    elif type == "genotype":
+        type_names = ["OMP", "Gg8"]
+        color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
+        trace2_to_plot = trace2.loc[
+            :, 500.00:700.00
+        ]  # only plots first 400-1000 ms
+
+        trace2_to_plot_combined = pd.concat(
+            [stim_columns, trace2_to_plot], axis=1
+        )
+
+        trace2_y_toplot = trace2_to_plot_combined.loc[
+            (trace2_to_plot_combined["Light Intensity"] == intensity)
+            & (trace2_to_plot_combined["Light Duration"] == duration),
+            500.00::,
+        ].squeeze()
+
+        trace2_x = trace2_to_plot.columns
+
+    example_traces_fig = go.Figure(layout=layout)
+    example_traces_fig.add_trace(
+        go.Scatter(
+            x=trace1_to_plot.columns,
+            y=trace1_y_toplot,
+            name=type_names[0],
+            mode="lines",
+            line=dict(color=color[type_names[0]], width=4),
+            # legendgroup=duration,
+        ),
+    )
+
+    example_traces_fig.add_trace(
+        go.Scatter(
+            x=trace2_x,
+            y=trace2_y_toplot,
+            name=type_names[1],
+            mode="lines",
+            line=dict(color=color[type_names[1]], width=4),
+            # legendgroup=duration,
+        ),
+    )
+
+    example_traces_fig.update_xaxes(
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+        gridcolor="black",
+        ticks="outside",
+        tick0=520,
+        dtick=10,
+    )
+    example_traces_fig.update_yaxes(
+        showline=True, linewidth=1, gridcolor="black", linecolor="black",
+    )
+
+    example_traces_fig.update_layout(
+        font_family="Arial", legend=dict(font=dict(family="Arial", size=26))
+    )
+
+    example_traces_noaxes = go.Figure(example_traces_fig)
+    example_traces_noaxes.update_xaxes(showgrid=False, visible=False)
+    example_traces_noaxes.update_yaxes(showgrid=False, visible=False)
+
+    return example_traces_fig, example_traces_noaxes
+
+
+def save_example_traces_figs(axes, noaxes, type):
+    """
+    Saves the example traces figs as static png file
+    """
+
+    if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
+        os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
+    if type == "drug":
+        axes_filename = "NBQX_example_traces_axes.png"
+        noaxes_filename = "NBQX_example_traces_noaxes.png"
+
+    axes.write_image(
+        os.path.join(FileSettings.PAPER_FIGURES_FOLDER, axes_filename)
+    )
+
+    noaxes.write_image(
+        os.path.join(FileSettings.PAPER_FIGURES_FOLDER, noaxes_filename)
+    )
+
