@@ -564,6 +564,20 @@ def plot_example_traces(trace1, trace2, type, condition_exception=False):
         ),
     )
 
+    # changes margin of plot to make room for light label
+    example_traces_fig.update_layout(margin=dict(t=150))
+    # adds line for light stim
+    example_traces_fig.add_shape(
+        type="rect",
+        x0=520,
+        y0=50,
+        x1=521,
+        y1=100,
+        line=dict(color="#33F7FF"),
+        fillcolor="#33F7FF",
+    )
+    example_traces_fig.update_shapes(dict(xref="x", yref="y"))
+
     example_traces_fig.update_xaxes(
         showline=True,
         linewidth=1,
