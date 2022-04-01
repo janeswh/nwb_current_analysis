@@ -29,7 +29,10 @@ class JaneCell(object):
         self.nwbfile = nwbfile
         self.file_name = nwbfile_name
         self.raw_df = None
+        self.raw_ic_df = None
+        self.spikes_sweeps_dict = None
         self.drug_sweeps_dict = None
+        self.IC_sweeps_dict = None
         self.sweeps_dict = None
 
         self.cell_analysis_dict = None
@@ -46,27 +49,42 @@ class JaneCell(object):
         # turn sweep_table into a pandas df
         nwb_df = pd.DataFrame(self.nwbfile.sweep_table[:])
 
-        # finds the series indices for VoltageClampSeries data
+        # finds the series indices for Current/VoltageClampSeries data
         b = [series[0] for series in nwb_df["series"]]
 
         vc_indices = []
+        ic_indices = []
         for index, item in enumerate(b):
             # print(type(b[index]) == pynwb.icephys.VoltageClampSeries, index)
             if type(b[index]) == pynwb.icephys.VoltageClampSeries:
                 vc_indices.append(index)
+            elif type(b[index]) == pynwb.icephys.CurrentClampSeries:
+                ic_indices.append(index)
 
-        # puts the VC series data into another df
+        # puts the VC/IC series data into dfs
         vc_sweeps = nwb_df.iloc[vc_indices]
+        ic_sweeps = nwb_df.iloc[ic_indices]
 
         # extracts VC series data into df
         raw_series = []
+        raw_ic_series = []
 
         for i in vc_indices:
             raw_series.append(b[i].data[:])
 
+        for i in ic_indices:
+            raw_ic_series.append(b[i].data[:])
+
         # columns are sweeps, rows are time (*fs)
         self.raw_df = pd.DataFrame(raw_series).T
         self.raw_df.columns = vc_sweeps.sweep_number
+
+        self.raw_ic_df = pd.DataFrame(raw_ic_series).T
+        self.raw_ic_df.columns = ic_sweeps.sweep_number
+
+        # drops rows after 2 ms in raw_ic_df (IC sweeps are only 2 ms long)
+        # except for first 30s nothing resting sweep
+        self.raw_ic_df.drop(self.raw_ic_df.index[50000:], inplace=True)
 
         # gets sweep info for one cell, drops empty values
         file_split = self.file_name.split(".")
@@ -191,11 +209,44 @@ class JaneCell(object):
             k: v for (k, v) in drug_sweeps_dict.items() if not v.empty
         }
 
+    def make_spikes_dict(self):
+        """
+        Collects all the FI IC step sweeps into a dict
+        """
+        steps_sweep_info = self.cell_sweep_info.filter(like="FI", axis=0)
+
+        sweeps_dict = {}
+
+        # define sweep ranges for each stim set present
+        for i in range(len(steps_sweep_info.index)):
+            stim_name = steps_sweep_info.index[i]
+            stim_range = steps_sweep_info.iloc[i].str.split(",")[0]
+            stim_sweeps = []
+
+            for j in range(len(stim_range)):
+                if "-" in stim_range[j]:
+                    r_start = int(stim_range[j].split("-")[0])
+                    r_end = int(stim_range[j].split("-")[1]) + 1
+                    all_sweeps = list(range(r_start, r_end))
+                    stim_sweeps.extend(all_sweeps)
+                else:
+                    stim_sweeps.append(int(stim_range[j][0]))
+
+            stim_sweeps_IC = self.raw_ic_df[
+                self.raw_ic_df.columns.intersection(set(stim_sweeps))
+            ]
+            sweeps_dict[stim_name] = stim_sweeps_IC
+
+        # drop keys with empty dataframes
+        self.IC_sweeps_dict = {
+            k: v for (k, v) in sweeps_dict.items() if not v.empty
+        }
+
     def make_sweeps_dict(self):
         """
         Create dict with stim name as keys, VC data as values
         """
-        # pdb.set_trace()
+
         stim_sweep_info = self.cell_sweep_info.filter(like="%", axis=0)
         stim_sweep_info = stim_sweep_info[
             stim_sweep_info[self.cell_name].str.contains("-")
@@ -514,6 +565,38 @@ class JaneCell(object):
         sub_mean_trace = mean_trace_filtered - mean_baseline
 
         return sub_mean_trace
+
+    def extract_FI_sweep(self, sweep_number):
+        """
+        Extracts a single FI step sweep for plotting STC spikes. Select the
+        sweep with sweep_number
+        """
+        sweeps_dict = self.IC_sweeps_dict
+        traces = sweeps_dict["FI current steps"]
+
+        # convert time to ms
+        time = np.arange(0, len(traces) / FS, 1 / FS)
+        traces.index = time
+
+        # filter traces
+        traces_filtered = self.filter_traces(traces)
+        mean_trace_filtered = pd.DataFrame(traces_filtered.mean(axis=1))
+
+        mean_trace_filtered.index = time
+        traces_filtered.index = time
+        traces_filtered.columns = traces.columns
+
+        extracted_sweep = traces[sweep_number]
+
+        # # find mean baseline, defined as the last 3s of the sweep
+        # baseline = self.calculate_mean_baseline(
+        #     traces_filtered, baseline_start=100, baseline_end=450
+        # )
+        # mean_baseline = self.calculate_mean_baseline(
+        #     mean_trace_filtered, baseline_start=100, baseline_end=450
+        # )
+
+        return extracted_sweep
 
     def calculate_stim_stats(self, stim_id):
         sweeps_dict = self.sweeps_dict

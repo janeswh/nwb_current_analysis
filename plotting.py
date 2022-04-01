@@ -483,11 +483,19 @@ def save_response_counts_fig(response_counts_fig):
     )
 
 
-def plot_example_traces(trace1, trace2, type, condition_exception=False):
+def plot_example_traces(
+    trace1,
+    trace2,
+    type,
+    same_genotype=None,
+    condition_exception=False,
+    small_yaxes=False,
+):
     """
     Plots two mean traces on one plot for paper figures. Takes two traces as
     dfs and their type (e.g. ctrl vs. NBQX, Gg8 vs. OMP). Trace 1 is always
-    control or OMP, Trace 2 is NBQX or Gg8.
+    control or OMP, Trace 2 is NBQX or Gg8. "genotype" indicates plots in which
+    both cells are from the same genotype, for plotting color dictionary.
     """
     # sets background color to white
     layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
@@ -510,21 +518,35 @@ def plot_example_traces(trace1, trace2, type, condition_exception=False):
 
     # sets trace colors and Trace 2 values according to type of traces
     if type == "drug":
-        type_names = ["Control", "NBQX"]
-        color = {"Control": "#7a81ff", "NBQX": "#EE251F"}
+        if same_genotype == "OMP":
+            type_names = ["OMP Control", "NBQX"]
+            color = {"OMP Control": "#ff9300", "NBQX": "#EE251F"}
+        elif same_genotype == "Gg8":
+            type_names = ["Gg8 Control", "NBQX"]
+            color = {"Gg8 Control": "#7a81ff", "NBQX": "#EE251F"}
         trace2_y_toplot = trace2.loc[
             500.00:700.00
         ].squeeze()  # only plots first 400-1000 ms
 
         trace2_x = trace2.loc[500.00:700.00].index
 
-    elif type == "genotype":
+    elif type in {"genotypes", "OMP", "Gg8"}:
+        if same_genotype is None:
+            type_names = ["OMP", "Gg8"]
+            color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
+        elif same_genotype == "OMP":
+            type_names = ["OMP cell 1", "OMP cell 2"]
+            color = {"OMP cell 1": "#ff9300", "OMP cell 2": "#FBB85C"}
+        elif same_genotype == "Gg8":
+            type_names = ["Gg8 cell 1", "Gg8 cell 2"]
+            color = {"Gg8 cell 1": "#7a81ff", "Gg8 cell 2": "#A4A8F9"}
+
         # chooses different condition for cell that doesn't have 100%, 1 ms
         if condition_exception is True:
             intensity = "50%"
             duration = " 1 ms"
-        type_names = ["OMP", "Gg8"]
-        color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
+
+        # color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
         trace2_to_plot = trace2.loc[
             :, 500.00:700.00
         ]  # only plots first 400-1000 ms
@@ -565,14 +587,14 @@ def plot_example_traces(trace1, trace2, type, condition_exception=False):
     )
 
     # changes margin of plot to make room for light label
-    example_traces_fig.update_layout(margin=dict(t=150))
+    # example_traces_fig.update_layout(margin=dict(t=150))
     # adds line for light stim
     example_traces_fig.add_shape(
         type="rect",
         x0=520,
-        y0=50,
+        y0=5 if small_yaxes is True else 50,
         x1=521,
-        y1=100,
+        y1=10 if small_yaxes is True else 100,
         line=dict(color="#33F7FF"),
         fillcolor="#33F7FF",
     )
@@ -591,6 +613,9 @@ def plot_example_traces(trace1, trace2, type, condition_exception=False):
         showline=True, linewidth=1, gridcolor="black", linecolor="black",
     )
 
+    if type == "genotypes":
+        example_traces_fig.update_yaxes(range=[-700, 150])
+
     example_traces_fig.update_layout(
         font_family="Arial", legend=dict(font=dict(family="Arial", size=26))
     )
@@ -602,7 +627,9 @@ def plot_example_traces(trace1, trace2, type, condition_exception=False):
     return example_traces_fig, example_traces_noaxes
 
 
-def save_example_traces_figs(axes, noaxes, type, cell_name=None):
+def save_example_traces_figs(
+    axes, noaxes, type, same_genotype=None, cell_name=None
+):
     """
     Saves the example traces figs as static png file
     """
@@ -612,9 +639,16 @@ def save_example_traces_figs(axes, noaxes, type, cell_name=None):
     if type == "drug":
         axes_filename = "{}_NBQX_example_traces_axes.png".format(cell_name)
         noaxes_filename = "{}_NBQX_example_traces_noaxes.png".format(cell_name)
-    elif type == "genotype":
-        axes_filename = "OMPvGg8_traces_axes.png"
-        noaxes_filename = "OMPvGg8_traces_noaxes.png"
+    elif type == "genotypes":
+        if same_genotype is None:
+            axes_filename = "OMPvGg8_traces_axes.png"
+            noaxes_filename = "OMPvGg8_traces_noaxes.png"
+        elif same_genotype == "OMP":
+            axes_filename = "two_OMP_traces_axes.png"
+            noaxes_filename = "two_OMP_traces_noaxes.png"
+        elif same_genotype == "Gg8":
+            axes_filename = "two_Gg8_traces_axes.png"
+            noaxes_filename = "two_Gg8_traces_noaxes.png"
 
     axes.write_image(
         os.path.join(FileSettings.PAPER_FIGURES_FOLDER, axes_filename)
@@ -623,4 +657,45 @@ def save_example_traces_figs(axes, noaxes, type, cell_name=None):
     noaxes.write_image(
         os.path.join(FileSettings.PAPER_FIGURES_FOLDER, noaxes_filename)
     )
+
+
+def plot_spike_sweep(trace):
+    """
+    Plots a single spike sweep to show STC physiology
+    """
+    layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
+    to_plot = trace[400:1600]
+    spike_fig = go.Figure(layout=layout)
+    spike_fig.add_trace(
+        go.Scatter(
+            x=trace.index,
+            y=to_plot,
+            # name=type_names[0],
+            mode="lines",
+            line=dict(color="#414145", width=2),
+            # legendgroup=duration,
+        ),
+    )
+
+    spike_fig.update_xaxes(
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+        gridcolor="black",
+        ticks="outside",
+        tick0=400,
+        dtick=100,
+    )
+
+    spike_fig.update_yaxes(
+        showline=True, linewidth=1, gridcolor="black", linecolor="black",
+    )
+
+    spike_noaxes = go.Figure(spike_fig)
+    spike_noaxes.update_xaxes(showgrid=False, visible=False)
+    spike_noaxes.update_yaxes(showgrid=False, visible=False)
+
+    pdb.set_trace()
+
+    return spike_fig, spike_noaxes
 
