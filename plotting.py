@@ -483,124 +483,179 @@ def save_response_counts_fig(response_counts_fig):
     )
 
 
-def plot_example_traces(
-    trace1,
-    trace2,
-    type,
-    same_genotype=None,
-    condition_exception=False,
-    small_yaxes=False,
-):
+def make_one_plot_trace(file_name, cell_trace, type, inset=False):
     """
-    Plots two mean traces on one plot for paper figures. Takes two traces as
-    dfs and their type (e.g. ctrl vs. NBQX, Gg8 vs. OMP). Trace 1 is always
-    control or OMP, Trace 2 is NBQX or Gg8. "genotype" indicates plots in which
-    both cells are from the same genotype, for plotting color dictionary.
+    Makes the trace data used to plot later. "type" parameter determines the 
+    color of the trace
+    
     """
-    # sets background color to white
-    layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
-
     intensity, duration = FileSettings.SELECTED_CONDITION
 
-    # sets Trace 1 values
-    stim_columns = trace1.loc[:, ["Light Intensity", "Light Duration"]]
-    trace1_to_plot = trace1.loc[
-        :, 500.00:700.00
-    ]  # only plots first 400-1000 ms
+    if file_name == "JH20210923_c2.nwb":
+        intensity = "50%"
+        duration = " 1 ms"
 
-    trace1_to_plot_combined = pd.concat([stim_columns, trace1_to_plot], axis=1)
+    if type == "NBQX":
+        trace_to_plot = cell_trace.loc[:, 500.00:700.00]
+        trace_y_toplot = cell_trace.loc[500.00:700.00].squeeze()
 
-    trace1_y_toplot = trace1_to_plot_combined.loc[
-        (trace1_to_plot_combined["Light Intensity"] == intensity)
-        & (trace1_to_plot_combined["Light Duration"] == duration),
-        500.00::,
-    ].squeeze()
-
-    # sets trace colors and Trace 2 values according to type of traces
-    if type == "drug":
-        if same_genotype == "OMP":
-            type_names = ["OMP Control", "NBQX"]
-            color = {"OMP Control": "#ff9300", "NBQX": "#EE251F"}
-        elif same_genotype == "Gg8":
-            type_names = ["Gg8 Control", "NBQX"]
-            color = {"Gg8 Control": "#7a81ff", "NBQX": "#EE251F"}
-        trace2_y_toplot = trace2.loc[
-            500.00:700.00
-        ].squeeze()  # only plots first 400-1000 ms
-
-        trace2_x = trace2.loc[500.00:700.00].index
-
-    elif type in {"genotypes", "OMP", "Gg8"}:
-        if same_genotype is None:
-            type_names = ["OMP", "Gg8"]
-            color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
-        elif same_genotype == "OMP":
-            type_names = ["OMP cell 1", "OMP cell 2"]
-            color = {"OMP cell 1": "#ff9300", "OMP cell 2": "#FBB85C"}
-        elif same_genotype == "Gg8":
-            type_names = ["Gg8 cell 1", "Gg8 cell 2"]
-            color = {"Gg8 cell 1": "#7a81ff", "Gg8 cell 2": "#A4A8F9"}
-
-        # chooses different condition for cell that doesn't have 100%, 1 ms
-        if condition_exception is True:
-            intensity = "50%"
-            duration = " 1 ms"
-
-        # color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
-        trace2_to_plot = trace2.loc[
+    else:
+        # sets cell trace values
+        stim_columns = cell_trace.loc[:, ["Light Intensity", "Light Duration"]]
+        trace_to_plot = cell_trace.loc[
             :, 500.00:700.00
         ]  # only plots first 400-1000 ms
 
-        trace2_to_plot_combined = pd.concat(
-            [stim_columns, trace2_to_plot], axis=1
+        trace_to_plot_combined = pd.concat(
+            [stim_columns, trace_to_plot], axis=1
         )
 
-        trace2_y_toplot = trace2_to_plot_combined.loc[
-            (trace2_to_plot_combined["Light Intensity"] == intensity)
-            & (trace2_to_plot_combined["Light Duration"] == duration),
+        trace_y_toplot = trace_to_plot_combined.loc[
+            (trace_to_plot_combined["Light Intensity"] == intensity)
+            & (trace_to_plot_combined["Light Duration"] == duration),
             500.00::,
         ].squeeze()
 
-        trace2_x = trace2_to_plot.columns
-
-    example_traces_fig = go.Figure(layout=layout)
-    example_traces_fig.add_trace(
-        go.Scatter(
-            x=trace1_to_plot.columns,
-            y=trace1_y_toplot,
-            name=type_names[0],
+    color = {
+        "Control": "#414145",
+        "NBQX": "#EE251F",
+        "OMP cell 1": "#ff9300",
+        "OMP cell 2": "#FBB85C",
+        "Gg8 cell 1": "#7a81ff",
+        "Gg8 cell 2": "#A4A8F9",
+    }
+    if inset is True:
+        plot_trace = go.Scatter(
+            x=trace_y_toplot.index
+            if type == "NBQX"
+            else trace_to_plot.columns,
+            y=trace_y_toplot,
+            xaxis="x2",
+            yaxis="y2",
+            name=type,
             mode="lines",
-            line=dict(color=color[type_names[0]], width=4),
+            line=dict(color=color[type], width=2),
             # legendgroup=duration,
-        ),
+        )
+    else:
+        plot_trace = go.Scatter(
+            x=trace_to_plot.columns,
+            y=trace_y_toplot,
+            name=type,
+            mode="lines",
+            line=dict(color=color[type], width=4),
+            # legendgroup=duration,
+        )
+
+    return plot_trace
+
+
+def make_inset_plot_fig(
+    genotype, main_trace1, main_trace2, inset_trace1, inset_trace2
+):
+    """
+    Takes four traces and makes a main plot with inset plot
+    """
+    data = [main_trace1, main_trace2, inset_trace1, inset_trace2]
+
+    # sets background color to white
+    layout = go.Layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis=dict(range=[-700, 150],),
+        xaxis2=dict(domain=[0.55, 0.95], anchor="y2"),
+        yaxis2=dict(domain=[0.1, 0.5], anchor="x2"),
     )
 
-    example_traces_fig.add_trace(
-        go.Scatter(
-            x=trace2_x,
-            y=trace2_y_toplot,
-            name=type_names[1],
-            mode="lines",
-            line=dict(color=color[type_names[1]], width=4),
-            # legendgroup=duration,
-        ),
-    )
+    inset_plot = go.Figure(data=data, layout=layout)
 
-    # changes margin of plot to make room for light label
-    # example_traces_fig.update_layout(margin=dict(t=150))
     # adds line for light stim
-    example_traces_fig.add_shape(
+    inset_plot.add_shape(
         type="rect",
         x0=520,
-        y0=5 if small_yaxes is True else 50,
+        y0=50,
         x1=521,
-        y1=10 if small_yaxes is True else 100,
+        y1=100,
         line=dict(color="#33F7FF"),
         fillcolor="#33F7FF",
     )
-    example_traces_fig.update_shapes(dict(xref="x", yref="y"))
 
-    example_traces_fig.update_xaxes(
+    # adds horizontal line + text for main plot scale bar
+    inset_plot.add_shape(
+        type="line", x0=550, y0=-600, x1=575, y1=-600,
+    )
+    inset_plot.add_annotation(
+        x=562.5, y=-650, text="25 ms", showarrow=False, font=dict(size=20)
+    )
+
+    # adds vertical line + text for main plot scale bar
+    inset_plot.add_shape(type="line", x0=575, y0=-600, x1=575, y1=-400)
+
+    inset_plot.add_annotation(
+        x=585,
+        y=-500,
+        text="200 pA",
+        showarrow=False,
+        textangle=-90,
+        font=dict(size=20),
+    )
+
+    # adds horizontal line + text for inset plot scale bar
+    inset_plot.add_shape(
+        xref="x2",
+        yref="y2",
+        type="line",
+        x0=600,
+        y0=-300 if genotype == "OMP" else -35,
+        x1=620,
+        y1=-300 if genotype == "OMP" else -35,
+    )
+    inset_plot.add_annotation(
+        xref="x2",
+        yref="y2",
+        x=610,
+        y=-380 if genotype == "OMP" else -40,
+        text="20 ms",
+        showarrow=False,
+        font=dict(size=16),
+    )
+
+    # adds vertical line + text for inset plot scale bar
+    inset_plot.add_shape(
+        xref="x2",
+        yref="y2",
+        type="line",
+        x0=620,
+        y0=-300 if genotype == "OMP" else -35,
+        x1=620,
+        y1=-200 if genotype == "OMP" else -25,
+    )
+
+    inset_plot.add_annotation(
+        xref="x2",
+        yref="y2",
+        x=645,
+        y=-250 if genotype == "OMP" else -30,
+        text="100 pA" if genotype == "OMP" else "10 pA",
+        showarrow=False,
+        textangle=-90,
+        font=dict(size=16),
+    )
+
+    # add box around inset plot
+    inset_plot.add_shape(
+        type="rect",
+        xref="paper",
+        yref="paper",
+        x0=0.53,
+        y0=0.1,
+        x1=0.97,
+        y1=0.5,
+        line={"width": 1, "color": "black"},
+    )
+
+    # inset_plot.update_shapes(dict(xref="x", yref="y"))
+
+    inset_plot.update_xaxes(
         showline=True,
         linewidth=1,
         linecolor="black",
@@ -609,46 +664,36 @@ def plot_example_traces(
         tick0=520,
         dtick=10,
     )
-    example_traces_fig.update_yaxes(
+    inset_plot.update_yaxes(
         showline=True, linewidth=1, gridcolor="black", linecolor="black",
     )
 
-    if type == "genotypes":
-        example_traces_fig.update_yaxes(range=[-700, 150])
-
-    example_traces_fig.update_layout(
+    inset_plot.update_layout(
         font_family="Arial", legend=dict(font=dict(family="Arial", size=26))
     )
 
-    example_traces_noaxes = go.Figure(example_traces_fig)
-    example_traces_noaxes.update_xaxes(showgrid=False, visible=False)
-    example_traces_noaxes.update_yaxes(showgrid=False, visible=False)
+    inset_plot_noaxes = go.Figure(inset_plot)
+    inset_plot_noaxes.update_xaxes(showgrid=False, visible=False)
+    inset_plot_noaxes.update_yaxes(showgrid=False, visible=False)
 
-    return example_traces_fig, example_traces_noaxes
+    # inset_plot.show()
+    # inset_plot_noaxes.show()
+
+    # pdb.set_trace()
+
+    return inset_plot, inset_plot_noaxes
 
 
-def save_example_traces_figs(
-    axes, noaxes, type, same_genotype=None, cell_name=None
-):
+def save_example_traces_figs(axes, noaxes, genotype):
     """
     Saves the example traces figs as static png file
     """
 
     if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
         os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
-    if type == "drug":
-        axes_filename = "{}_NBQX_example_traces_axes.png".format(cell_name)
-        noaxes_filename = "{}_NBQX_example_traces_noaxes.png".format(cell_name)
-    elif type == "genotypes":
-        if same_genotype is None:
-            axes_filename = "OMPvGg8_traces_axes.png"
-            noaxes_filename = "OMPvGg8_traces_noaxes.png"
-        elif same_genotype == "OMP":
-            axes_filename = "two_OMP_traces_axes.png"
-            noaxes_filename = "two_OMP_traces_noaxes.png"
-        elif same_genotype == "Gg8":
-            axes_filename = "two_Gg8_traces_axes.png"
-            noaxes_filename = "two_Gg8_traces_noaxes.png"
+
+    axes_filename = "{}_example_traces.png".format(genotype)
+    noaxes_filename = "{}_example_traces_noaxes.png".format(genotype)
 
     axes.write_image(
         os.path.join(FileSettings.PAPER_FIGURES_FOLDER, axes_filename)
