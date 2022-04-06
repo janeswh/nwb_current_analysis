@@ -47,17 +47,52 @@ def get_single_cell(dataset, csvfile, nwbfile_name):
     return cell
 
 
-def get_single_cell_traces(cell):
+def get_cell_sweeps_dict(cell, spikes=False):
     """
-    Gets the normal light stim traces for a cell object
+    Gets the dict of all sweeps for a cell object
     """
-
     # 2 drops depolarized and esc AP sweeps from VC data if applicable
     cell.drop_sweeps()
 
     # 3 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
-    cell.make_sweeps_dict()
-    cell.make_spikes_dict()
+    if spikes is False:
+        cell.make_sweeps_dict()
+        return cell.sweeps_dict
+
+    else:
+        cell.make_spikes_dict()
+        return cell.ic_sweeps_dict
+
+
+def get_annotation_values(cell, selected_condition, sweep_number):
+    """
+    Gets the response onset, amplitude peak, and time to peak values for
+    annotating example trace.
+    """
+
+    onset = cell.cell_analysis_dict[selected_condition][
+        "Onset Latencies (ms)"
+    ][sweep_number]
+
+    amplitude_peak = cell.cell_analysis_dict[selected_condition][
+        "Raw Peaks (pA)"
+    ][sweep_number]
+
+    time_topeak = cell.cell_analysis_dict[selected_condition][
+        "Time to Peaks (ms)"
+    ][sweep_number]
+
+    return [onset, amplitude_peak, time_topeak]
+
+
+def get_single_cell_traces(
+    cell, traces_type="mean", sweep_number=None, annotate=False
+):
+    """
+    Gets the normal light stim mean traces for a cell object
+    """
+
+    get_cell_sweeps_dict(cell)
 
     # 4 runs stats on sweeps and creates a dict for each stim condition
     cell.make_cell_analysis_dict()
@@ -67,13 +102,33 @@ def get_single_cell_traces(cell):
 
     # 6 calculates response stats for plotting
     cell.make_stats_df()
-    traces = cell.make_mean_traces_df()
 
-    # # pulls out spikes sweep
-    # spike_sweep = cell.extract_FI_sweep(sweep_number=4)
-    # plot_spike_sweep(spike_sweep)
+    if cell.cell_name == "JH20210923_c2":
+        selected_condition = "50%, 1 ms"
+    else:
+        selected_condition = ",".join(FileSettings.SELECTED_CONDITION)
 
-    return traces
+    if annotate is True:
+        annotation_values = get_annotation_values(
+            cell, selected_condition, sweep_number
+        )
+    else:
+        annotation_values = None
+
+    if traces_type == "mean":
+        cell.make_mean_traces_df()
+        traces = cell.mean_trace_df
+    # elif traces_type == "spike":
+    #     # # pulls out spikes sweep
+    #     spike_sweep = cell.extract_FI_sweep(sweep_number=4)
+    #     traces = spike_sweep
+    #     plot_spike_sweep(spike_sweep)
+    elif traces_type == "single":
+        vc_sweep = cell.filtered_traces_dict[selected_condition][sweep_number]
+        # vc_sweep = cell.extract_VC_sweep(selected_condition, sweep_number)
+        traces = vc_sweep
+
+    return traces, annotation_values
 
 
 def get_single_drug_traces(cell):
@@ -85,99 +140,6 @@ def get_single_drug_traces(cell):
     drug_trace = cell.extract_drug_sweeps()
 
     return drug_trace
-
-    # 7 plots mean traces for ctrl vs. NBQX wash-in (from the same cell)
-    if type == "drug":
-        if cell.cell_name == "JH20211130_c1":
-            small_yaxes = True
-        else:
-            small_yaxes = False
-        cell.make_drug_sweeps_dict()
-        drug_trace = cell.extract_drug_sweeps()
-        if inset is False:
-            axes, noaxes = plot_example_traces(
-                traces,
-                drug_trace,
-                type,
-                same_genotype=same_genotype,
-                small_yaxes=small_yaxes,
-                inset=inset,
-            )
-            save_example_traces_figs(
-                axes, noaxes, type, same_genotype, cell.cell_name
-            )
-        else:
-            trace1plot, trace2plot = plot_example_traces(
-                traces,
-                drug_trace,
-                type,
-                same_genotype=same_genotype,
-                small_yaxes=small_yaxes,
-                inset=inset,
-            )
-            return trace1plot, trace2plot
-
-    if type == "genotypes":
-        return traces
-
-
-def plot_two_cells(
-    dataset, csvfile, nwbfile_names, type, same_genotype=None, inset=False
-):
-    trace1plot = None
-    trace2plot = None
-    traces = []
-    for file in nwbfile_names:
-        trace = plot_single_cell(dataset, csvfile, file, type)
-        traces.append(trace)
-
-    if nwbfile_names[1] == "JH20210923_c2.nwb":
-        exception = True
-    else:
-        exception = False
-
-    if inset is False:
-        axes, noaxes = plot_example_traces(
-            traces[0], traces[1], type, same_genotype, exception, inset=inset
-        )
-        save_example_traces_figs(axes, noaxes, type, same_genotype)
-
-    else:
-        trace1plot, trace2plot = plot_example_traces(
-            traces[0], traces[1], type, same_genotype, exception, inset=inset
-        )
-
-    return trace1plot, trace2plot
-
-
-# def make_inset_plots(
-#     dataset, csvfile, main_plot_files, inset_plot_file, genotype
-# ):
-#     """
-#     Takes 2 traces from each instance of plot_example_traces and puts one in a
-#     plot, and one in the inset plot
-#     """
-#     # this gets the traces for the main plot (no drug, two cells)
-#     maintrace1, maintrace2 = plot_two_cells(
-#         dataset,
-#         csvfile,
-#         main_plot_files,
-#         "genotype",
-#         same_genotype=genotype,
-#         inset=True,
-#     )
-
-#     # this gets the traces for the inset plot (ctrl + NBQX, one cell)
-#     inset_trace1, inset_trace2 = plot_single_cell(
-#         dataset,
-#         csvfile,
-#         inset_plot_file,
-#         "drug",
-#         same_genotype=genotype,
-#         inset=True,
-#     )
-
-#     pdb.set_trace()
 
 
 def make_inset_plot(
@@ -197,12 +159,12 @@ def make_inset_plot(
     main_ephys_traces = []
     for file in main_plot_files:
         cell = get_single_cell(dataset, csvfile, file)
-        traces = get_single_cell_traces(cell)
+        traces, annotation_values = get_single_cell_traces(cell)
         main_ephys_traces.append(traces)
 
     # gets ephys traces for inest plot cell
     inset_cell = get_single_cell(dataset, csvfile, inset_plot_file)
-    inset_traces = get_single_cell_traces(inset_cell)
+    inset_traces, annotation_values = get_single_cell_traces(inset_cell)
     drug_trace = get_single_drug_traces(inset_cell)
 
     # makes the plotting traces for main plot
@@ -237,6 +199,22 @@ def make_inset_plot(
     print("Finished saving inset plots")
 
 
+def make_annotated_trace(dataset, csvfile, genotype, file_name, sweep_number):
+    """
+    Plots a single VC trace to demonstrate onset latency, peak amplitude, and
+    time to peak.
+    """
+
+    cell = get_single_cell(dataset, csvfile, file_name)
+    traces, annotation_values = get_single_cell_traces(
+        cell, "single", sweep_number, annotate=True
+    )
+    axes, noaxes = plot_annotated_trace(traces, annotation_values, genotype)
+    save_annotated_figs(axes, noaxes, cell, genotype)
+
+    print("Finished saving annotated trace plots")
+
+
 if __name__ == "__main__":
     dataset = "non-injected"
     csvfile_name = "{}_sweep_info.csv".format(dataset)
@@ -246,52 +224,16 @@ if __name__ == "__main__":
         csvfile_name,
     )
 
-    # trying inset plot for Gg8
-    main_plot_files = ["JH20210923_c2.nwb", "JH20210922_c1.nwb"]
-    inset_plot_file = "JH20211130_c1.nwb"
-    make_inset_plot(dataset, csvfile, "Gg8", main_plot_files, inset_plot_file)
-
-    # trying inset plot for OMP
-    main_plot_files = ["JH20211005_c3.nwb", "JH20211029_c1.nwb"]
-    inset_plot_file = "JH20211103_c3.nwb"
-    make_inset_plot(dataset, csvfile, "OMP", main_plot_files, inset_plot_file)
-
-    # # plot ctrl vs NBQX traces for one OMP cell
-    # nwbfile_name = "JH20211103_c3.nwb"
-    # plot_single_cell(dataset, csvfile, nwbfile_name, "drug", "OMP")
-    # print("Analysis for {} done".format(nwbfile_name))
-
-    # # plot ctrl vs NBQX traces for one Gg8 cell
-    # nwbfile_name = "JH20211130_c1.nwb"
-    # plot_single_cell(dataset, csvfile, nwbfile_name, "drug", "Gg8")
-    # print("Analysis for {} done".format(nwbfile_name))
-
-    # # # plot OMP vs Gg8 traces for two cells - close to median values
-    # # nwbfile_names = ["JH20211029_c1.nwb", "JH20210922_c1.nwb"]
-    # # plot_two_cells(dataset, csvfile, nwbfile_names, "genotypes")
-
-    # # plot OMP vs Gg8 traces for two cells - ideal cells (big responses)
-    # # actually this is complicated because don't have 100%, 1 ms, only 50% at
-    # # 1 ms so would need to index differently/make exception
-    # nwbfile_names = ["JH20211103_c3.nwb", "JH20210923_c2.nwb"]
-    # plot_two_cells(dataset, csvfile, nwbfile_names, "genotypes")
-
-    # # plotting one small and one large Gg8 trace on one plot
-    # nwbfile_names = ["JH20210922_c1.nwb", "JH20210923_c2.nwb"]
-    # plot_two_cells(dataset, csvfile, nwbfile_names, "genotypes", "Gg8")
-
-    # # plotting one small and one large OMP trace on one plot
-    # nwbfile_names = ["JH20211029_c1.nwb", "JH20211005_c3.nwb"]
-    # plot_two_cells(dataset, csvfile, nwbfile_names, "genotypes", "OMP")
-
-    # # plotting one sweep showing STC spikes
-    # nwbfile_name = "JH20211130_c1.nwb"
-    # plot_single_cell(dataset, csvfile, nwbfile_name, "drug")
-
-    # # trying inset plot on Gg8 traces
-    # main_plot_files = ["JH20210922_c1.nwb", "JH20210923_c2.nwb"]
+    # # inset plot for Gg8, list big response cell first
+    # main_plot_files = ["JH20210923_c2.nwb", "JH20210922_c1.nwb"]
     # inset_plot_file = "JH20211130_c1.nwb"
-    # make_inset_plots(dataset, csvfile, main_plot_files, inset_plot_file, "Gg8")
+    # make_inset_plot(dataset, csvfile, "Gg8", main_plot_files, inset_plot_file)
 
-    print("plotting done")
+    # # inset plot for OMP
+    # main_plot_files = ["JH20211005_c3.nwb", "JH20211029_c1.nwb"]
+    # inset_plot_file = "JH20211103_c3.nwb"
+    # make_inset_plot(dataset, csvfile, "OMP", main_plot_files, inset_plot_file)
+
+    # # plot single VC trace to show onset latency, pick sweep 131
+    # make_annotated_trace(dataset, csvfile, "Gg8", "JH20210923_c2.nwb", 0)
 

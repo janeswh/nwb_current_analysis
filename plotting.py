@@ -455,23 +455,28 @@ def save_response_counts_fig(response_counts_fig):
     )
 
 
-def plot_onset_latency(trace, onset, genotype):
+def plot_annotated_trace(trace, annotation_values, genotype):
     """
     Takes the trace from a single sweep and plots it on a smaller timescale
-    to demonstrate response onset latency
+    to demonstrate response onset latency, time to peak, and peak amplitude.
     """
+    onset = annotation_values[0]
+    peak_amp = annotation_values[1]
+    time_topeak = annotation_values[2]
 
     onset_time = 520 + onset
     onset_amp = trace[onset_time]
 
+    peak_time = 520 + time_topeak
+
     layout = go.Layout(plot_bgcolor="rgba(0,0,0,0)")
-    trace_to_plot = trace[515:530]
+    trace_to_plot = trace[518:530]
 
     color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
 
-    onset_plot = go.Figure()
+    annotated_plot = go.Figure(layout=layout)
 
-    onset_plot.add_trace(
+    annotated_plot.add_trace(
         go.Scatter(
             x=trace_to_plot.index,
             y=trace_to_plot,
@@ -483,40 +488,145 @@ def plot_onset_latency(trace, onset, genotype):
     )
 
     # adds line for light stim
-    onset_plot.add_shape(
+    annotated_plot.add_shape(
         type="rect",
         x0=520,
-        y0=30,
+        y0=35,
         x1=521,
-        y1=35,
+        y1=40,
         line=dict(color="#33F7FF"),
         fillcolor="#33F7FF",
     )
 
     # adds annotation for onset latency
-    onset_plot.add_annotation(
+    annotated_plot.add_annotation(
         x=onset_time + 1.5,
         y=onset_amp,
-        text="Response onset",
-        font=dict(size=20),
-        align="left",
+        text="Response onset:<br>{} ms delay".format(round(onset, 1)),
+        font=dict(size=24),
+        # align="left",
         showarrow=False,
-        # yshift=10,
+        xshift=50,
     )
 
-    onset_plot.add_trace(
+    annotated_plot.add_trace(
         go.Scatter(
             x=[onset_time],
             y=[onset_amp],
             mode="markers",
+            marker=dict(size=20, color="#CF50C6")
             # text="Response onset",
             # textposition="middle right",
             # textfont=dict(size=20),
         )
     )
 
-    onset_plot.show()
-    # pdb.set_trace()
+    # annotated_plot.update_layout(autosize=False, margin=dict(b=100))
+
+    # adds annotation for peak amplitude
+    annotated_plot.add_annotation(
+        x=peak_time + 1,
+        # y=peak_amp,
+        yref="paper",
+        y=-0.15,
+        text="Peak amplitude:<br>{} pA".format(round(peak_amp)),
+        font=dict(size=24),
+        # align="left",
+        showarrow=False,
+        # yshift=-100,
+    )
+
+    annotated_plot.add_trace(
+        go.Scatter(
+            x=[peak_time],
+            y=[peak_amp],
+            mode="markers",
+            marker=dict(size=20)
+            # text="Response onset",
+            # textposition="middle right",
+            # textfont=dict(size=20),
+        )
+    )
+
+    # add line and annotation for time to peak
+    annotated_plot.add_shape(
+        type="line",
+        x0=518,
+        y0=peak_amp,
+        x1=peak_time,
+        y1=peak_amp,
+        line=dict(dash="dash", width=3, color="#33B1FF"),
+    )
+    annotated_plot.add_annotation(
+        x=(peak_time - 518) / 2 + 518,
+        y=peak_amp,
+        text="Time to peak:<br>{} ms".format(round(time_topeak, 1)),
+        showarrow=False,
+        yshift=50,
+        xshift=-10,
+        font=dict(size=24, family="Arial"),
+    )
+
+    # adds horizontal line + text for main plot scale bar
+    annotated_plot.add_shape(
+        type="line", x0=527, y0=-300, x1=529, y1=-300,
+    )
+    annotated_plot.add_annotation(
+        x=528,
+        y=-300,
+        yshift=-25,
+        text="2 ms",
+        showarrow=False,
+        font=dict(size=20),
+    )
+
+    # adds vertical line + text for main plot scale bar
+    annotated_plot.add_shape(type="line", x0=529, y0=-300, x1=529, y1=-200)
+
+    annotated_plot.add_annotation(
+        x=529,
+        y=-250,
+        xshift=25,
+        text="100 pA",
+        showarrow=False,
+        textangle=-90,
+        font=dict(size=20),
+    )
+
+    annotated_plot.update_layout(font=dict(family="Arial",), showlegend=False)
+
+    annotated_plot_noaxes = go.Figure(annotated_plot)
+    annotated_plot_noaxes.update_xaxes(showgrid=False, visible=False)
+    annotated_plot_noaxes.update_yaxes(showgrid=False, visible=False)
+
+    # annotated_plot.show()
+    # annotated_plot_noaxes.show()
+
+    return annotated_plot, annotated_plot_noaxes
+
+
+def save_annotated_figs(axes, noaxes, cell, genotype):
+    """
+    Saves the example traces figs as static png file
+    """
+
+    if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
+        os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
+
+    axes_filename = "{}_{}_trace_annotated.png".format(
+        cell.cell_name, genotype
+    )
+    noaxes_filename = "{}_{}_trace_annotated_noaxes.png".format(
+        cell.cell_name, genotype
+    )
+
+    axes.write_image(
+        os.path.join(FileSettings.PAPER_FIGURES_FOLDER, axes_filename)
+    )
+
+    noaxes.write_image(
+        os.path.join(FileSettings.PAPER_FIGURES_FOLDER, noaxes_filename)
+    )
 
 
 def make_one_plot_trace(file_name, cell_trace, type, inset=False):
