@@ -502,7 +502,7 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     annotated_plot.add_annotation(
         x=onset_time + 1.5,
         y=onset_amp,
-        text="Response onset:<br>{} ms delay".format(round(onset, 1)),
+        text="Response onset:<br>{} ms latency".format(round(onset, 1)),
         font=dict(size=24),
         # align="left",
         showarrow=False,
@@ -850,109 +850,6 @@ def save_example_traces_figs(axes, noaxes, genotype):
     )
 
 
-def plot_spike_sweep(genotype, trace):
-    """
-    Plots a single spike sweep to show STC physiology
-    """
-    color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
-
-    layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
-    to_plot = trace[400:1600]
-
-    # pdb.set_trace()
-    spike_fig = go.Figure(layout=layout)
-    spike_fig.add_trace(
-        go.Scatter(
-            x=trace.index,
-            y=to_plot,
-            # name=type_names[0],
-            mode="lines",
-            line=dict(
-                # color=color[genotype],
-                color="#414145",
-                width=2,
-            ),
-            # legendgroup=duration,
-        ),
-    )
-
-    spike_fig.update_xaxes(
-        showline=True,
-        linewidth=1,
-        linecolor="black",
-        gridcolor="black",
-        ticks="outside",
-        tick0=400,
-        dtick=100,
-    )
-
-    spike_fig.update_yaxes(
-        showline=True, linewidth=1, gridcolor="black", linecolor="black",
-    )
-
-    # adds horizontal line + text for scale bar
-    spike_fig.add_shape(
-        type="line", x0=1000, y0=-10, x1=1200, y1=-10,
-    )
-    spike_fig.add_annotation(
-        x=1100,
-        y=-10,
-        yshift=-25,
-        text="200 ms",
-        showarrow=False,
-        font=dict(size=20),
-    )
-
-    # adds vertical line + text for scale bar
-    spike_fig.add_shape(type="line", x0=1200, y0=-10, x1=1200, y1=10)
-
-    spike_fig.add_annotation(
-        x=1200,
-        y=0,
-        xshift=25,
-        text="20 mV",
-        showarrow=False,
-        textangle=-90,
-        font=dict(size=20),
-    )
-
-    # add arrow annotation for Vr
-    spike_fig.add_annotation(
-        x=50,
-        y=to_plot[450],
-        # xshift=25,
-        yshift=5,
-        # text="{} mV".format(round(to_plot[450])),
-        showarrow=True,
-        arrowhead=2,
-        arrowsize=1,
-        arrowwidth=2,
-    )
-
-    # add text annotation for Vr
-    spike_fig.add_annotation(
-        x=50,
-        y=to_plot[450],
-        yshift=40,
-        xshift=-10,
-        text="{} mV".format(round(to_plot[450])),
-        showarrow=False,
-        font=dict(size=20),
-    )
-
-    spike_fig.update_layout(font_family="Arial",)
-
-    spike_noaxes = go.Figure(spike_fig)
-    spike_noaxes.update_xaxes(showgrid=False, visible=False)
-    spike_noaxes.update_yaxes(showgrid=False, visible=False)
-
-    # spike_fig.show()
-    # spike_noaxes.show()
-    # pdb.set_trace()
-
-    return spike_fig, spike_noaxes
-
-
 def plot_spike_sweeps(genotype, trace):
     """
     Plots a single spike sweep to show STC physiology
@@ -1017,6 +914,33 @@ def plot_spike_sweeps(genotype, trace):
 
     spikes_plots.update_yaxes(
         showline=True, linewidth=1, gridcolor="black", linecolor="black",
+    )
+
+    # add shaded box around spikes that we're zooming in on
+    spikes_plots.add_shape(
+        type="rect",
+        xref="x1",
+        yref="y1",
+        x0=528,
+        y0=-50,
+        x1=607,
+        y1=25,
+        line=dict(color="#B1EE81"),
+        fillcolor="#B1EE81",
+        opacity=0.5,
+        layer="below",
+    )
+
+    # add shaded border around zoomed in subplot
+    spikes_plots.add_shape(
+        type="rect",
+        xref="x2",
+        yref="y2",
+        x0=525,
+        y0=-52,
+        x1=610,
+        y1=25,
+        line=dict(color="#B1EE81"),
     )
 
     # adds horizontal line + text for main spikes scale bar
