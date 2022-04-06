@@ -567,7 +567,7 @@ def plot_annotated_trace(trace, annotation_values, genotype):
         font=dict(size=24, family="Arial"),
     )
 
-    # adds horizontal line + text for main plot scale bar
+    # adds horizontal line + text for scale bar
     annotated_plot.add_shape(
         type="line", x0=527, y0=-300, x1=529, y1=-300,
     )
@@ -580,7 +580,7 @@ def plot_annotated_trace(trace, annotation_values, genotype):
         font=dict(size=20),
     )
 
-    # adds vertical line + text for main plot scale bar
+    # adds vertical line + text for scale bar
     annotated_plot.add_shape(type="line", x0=529, y0=-300, x1=529, y1=-200)
 
     annotated_plot.add_annotation(
@@ -850,12 +850,16 @@ def save_example_traces_figs(axes, noaxes, genotype):
     )
 
 
-def plot_spike_sweep(trace):
+def plot_spike_sweep(genotype, trace):
     """
     Plots a single spike sweep to show STC physiology
     """
+    color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
+
     layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
     to_plot = trace[400:1600]
+
+    # pdb.set_trace()
     spike_fig = go.Figure(layout=layout)
     spike_fig.add_trace(
         go.Scatter(
@@ -863,7 +867,11 @@ def plot_spike_sweep(trace):
             y=to_plot,
             # name=type_names[0],
             mode="lines",
-            line=dict(color="#414145", width=2),
+            line=dict(
+                # color=color[genotype],
+                color="#414145",
+                width=2,
+            ),
             # legendgroup=duration,
         ),
     )
@@ -882,9 +890,262 @@ def plot_spike_sweep(trace):
         showline=True, linewidth=1, gridcolor="black", linecolor="black",
     )
 
+    # adds horizontal line + text for scale bar
+    spike_fig.add_shape(
+        type="line", x0=1000, y0=-10, x1=1200, y1=-10,
+    )
+    spike_fig.add_annotation(
+        x=1100,
+        y=-10,
+        yshift=-25,
+        text="200 ms",
+        showarrow=False,
+        font=dict(size=20),
+    )
+
+    # adds vertical line + text for scale bar
+    spike_fig.add_shape(type="line", x0=1200, y0=-10, x1=1200, y1=10)
+
+    spike_fig.add_annotation(
+        x=1200,
+        y=0,
+        xshift=25,
+        text="20 mV",
+        showarrow=False,
+        textangle=-90,
+        font=dict(size=20),
+    )
+
+    # add arrow annotation for Vr
+    spike_fig.add_annotation(
+        x=50,
+        y=to_plot[450],
+        # xshift=25,
+        yshift=5,
+        # text="{} mV".format(round(to_plot[450])),
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1,
+        arrowwidth=2,
+    )
+
+    # add text annotation for Vr
+    spike_fig.add_annotation(
+        x=50,
+        y=to_plot[450],
+        yshift=40,
+        xshift=-10,
+        text="{} mV".format(round(to_plot[450])),
+        showarrow=False,
+        font=dict(size=20),
+    )
+
+    spike_fig.update_layout(font_family="Arial",)
+
     spike_noaxes = go.Figure(spike_fig)
     spike_noaxes.update_xaxes(showgrid=False, visible=False)
     spike_noaxes.update_yaxes(showgrid=False, visible=False)
 
+    # spike_fig.show()
+    # spike_noaxes.show()
+    # pdb.set_trace()
+
     return spike_fig, spike_noaxes
 
+
+def plot_spike_sweeps(genotype, trace):
+    """
+    Plots a single spike sweep to show STC physiology
+    """
+    color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
+
+    layout = Layout(plot_bgcolor="rgba(0,0,0,0)")
+    to_plot = trace[400:1600]
+    zoomed_to_plot = trace[530:605]
+
+    spikes_plots = make_subplots(
+        rows=1, cols=2, column_widths=[0.7, 0.3], horizontal_spacing=0.05
+    )
+    # spikes_plots = go.Figure(layout=layout)
+    # pdb.set_trace()
+
+    # add main spike train
+    spikes_plots.add_trace(
+        go.Scatter(
+            x=to_plot.index,
+            y=to_plot,
+            # name=type_names[0],
+            mode="lines",
+            line=dict(
+                # color=color[genotype],
+                color="#414145",
+                width=2,
+            ),
+            # legendgroup=duration,
+        ),
+        row=1,
+        col=1,
+    )
+
+    # add zoomed-in spikes
+    spikes_plots.add_trace(
+        go.Scatter(
+            x=zoomed_to_plot.index,
+            y=zoomed_to_plot,
+            # name=type_names[0],
+            mode="lines",
+            line=dict(
+                # color=color[genotype],
+                color="#414145",
+                width=2,
+            ),
+            # legendgroup=duration,
+        ),
+        row=1,
+        col=2,
+    )
+
+    spikes_plots.update_xaxes(
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+        gridcolor="black",
+        ticks="outside",
+        tick0=400,
+        dtick=100,
+    )
+
+    spikes_plots.update_yaxes(
+        showline=True, linewidth=1, gridcolor="black", linecolor="black",
+    )
+
+    # adds horizontal line + text for main spikes scale bar
+    spikes_plots.add_shape(
+        type="line", xref="x1", yref="y1", x0=1400, y0=-10, x1=1600, y1=-10,
+    )
+    spikes_plots.add_annotation(
+        xref="x1",
+        yref="y1",
+        x=1500,
+        y=-10,
+        yshift=-25,
+        text="200 ms",
+        showarrow=False,
+        font=dict(size=20),
+    )
+
+    # adds vertical line + text for main spikes scale bar
+    spikes_plots.add_shape(
+        type="line", xref="x1", yref="y1", x0=1600, y0=-10, x1=1600, y1=10
+    )
+
+    spikes_plots.add_annotation(
+        xref="x1",
+        yref="y1",
+        x=1600,
+        y=0,
+        xshift=25,
+        text="20 mV",
+        showarrow=False,
+        textangle=-90,
+        font=dict(size=20),
+    )
+
+    # add arrow annotation for Vr
+    spikes_plots.add_annotation(
+        xref="x1",
+        yref="y1",
+        x=450,
+        y=to_plot[450],
+        # xshift=25,
+        yshift=5,
+        # text="{} mV".format(round(to_plot[450])),
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1,
+        arrowwidth=2,
+    )
+
+    # add text annotation for Vr
+    spikes_plots.add_annotation(
+        xref="x1",
+        yref="y1",
+        x=450,
+        y=to_plot[450],
+        yshift=40,
+        xshift=-10,
+        text="{} mV".format(round(to_plot[450])),
+        showarrow=False,
+        font=dict(size=20),
+    )
+
+    # adds horizontal line + text for zoomed spikes scale bar
+    spikes_plots.add_shape(
+        type="line", xref="x2", yref="y2", x0=612.5, y0=0, x1=637.5, y1=0,
+    )
+    spikes_plots.add_annotation(
+        xref="x2",
+        yref="y2",
+        x=625,
+        y=0,
+        yshift=-25,
+        text="25 ms",
+        showarrow=False,
+        font=dict(size=20),
+    )
+
+    # adds vertical line + text for zoomed spikes scale bar
+    spikes_plots.add_shape(
+        type="line", xref="x2", yref="y2", x0=637.5, y0=0, x1=637.5, y1=10
+    )
+
+    spikes_plots.add_annotation(
+        xref="x2",
+        yref="y2",
+        x=637.5,
+        y=5,
+        xshift=25,
+        text="10 mV",
+        showarrow=False,
+        textangle=-90,
+        font=dict(size=20),
+    )
+
+    spikes_plots.update_layout(
+        font_family="Arial",
+        showlegend=False,
+        width=1200,
+        height=600,
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+
+    spikes_plots_noaxes = go.Figure(spikes_plots)
+    spikes_plots_noaxes.update_xaxes(showgrid=False, visible=False)
+    spikes_plots_noaxes.update_yaxes(showgrid=False, visible=False)
+
+    # spikes_plots_noaxes.show()
+    # pdb.set_trace()
+
+    return spikes_plots, spikes_plots_noaxes
+
+
+def save_spike_figs(axes, noaxes, cell, genotype):
+    """
+    Saves the example traces figs as static png file
+    """
+
+    if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
+        os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
+
+    axes_filename = "{}_{}_spikes.png".format(cell.cell_name, genotype)
+    noaxes_filename = "{}_{}_spikes_noaxes.png".format(
+        cell.cell_name, genotype
+    )
+
+    axes.write_image(
+        os.path.join(FileSettings.PAPER_FIGURES_FOLDER, axes_filename)
+    )
+
+    noaxes.write_image(
+        os.path.join(FileSettings.PAPER_FIGURES_FOLDER, noaxes_filename)
+    )

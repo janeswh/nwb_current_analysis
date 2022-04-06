@@ -47,21 +47,21 @@ def get_single_cell(dataset, csvfile, nwbfile_name):
     return cell
 
 
-def get_cell_sweeps_dict(cell, spikes=False):
-    """
-    Gets the dict of all sweeps for a cell object
-    """
-    # 2 drops depolarized and esc AP sweeps from VC data if applicable
-    cell.drop_sweeps()
+# def get_cell_sweeps_dict(cell, spikes=False):
+#     """
+#     Gets the dict of all sweeps for a cell object
+#     """
+#     # 2 drops depolarized and esc AP sweeps from VC data if applicable
+#     cell.drop_sweeps()
 
-    # 3 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
-    if spikes is False:
-        cell.make_sweeps_dict()
-        return cell.sweeps_dict
+#     # 3 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
+#     if spikes is False:
+#         cell.make_sweeps_dict()
+#         return cell.sweeps_dict
 
-    else:
-        cell.make_spikes_dict()
-        return cell.ic_sweeps_dict
+#     else:
+#         cell.make_spikes_dict()
+#         return cell.ic_sweeps_dict
 
 
 def get_annotation_values(cell, selected_condition, sweep_number):
@@ -92,16 +92,23 @@ def get_single_cell_traces(
     Gets the normal light stim mean traces for a cell object
     """
 
-    get_cell_sweeps_dict(cell)
+    # 2 drops depolarized and esc AP sweeps from VC data if applicable
+    cell.drop_sweeps()
 
-    # 4 runs stats on sweeps and creates a dict for each stim condition
-    cell.make_cell_analysis_dict()
+    # 3 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
+    if traces_type == "spikes":
+        cell.make_spikes_dict()
+    else:
+        cell.make_sweeps_dict()
 
-    # 5 calculates power curve for plotting
-    cell.make_power_curve_stats_df()
+        # 4 runs stats on sweeps and creates a dict for each stim condition
+        cell.make_cell_analysis_dict()
 
-    # 6 calculates response stats for plotting
-    cell.make_stats_df()
+        # 5 calculates power curve for plotting
+        cell.make_power_curve_stats_df()
+
+        # 6 calculates response stats for plotting
+        cell.make_stats_df()
 
     if cell.cell_name == "JH20210923_c2":
         selected_condition = "50%, 1 ms"
@@ -118,11 +125,12 @@ def get_single_cell_traces(
     if traces_type == "mean":
         cell.make_mean_traces_df()
         traces = cell.mean_trace_df
-    # elif traces_type == "spike":
-    #     # # pulls out spikes sweep
-    #     spike_sweep = cell.extract_FI_sweep(sweep_number=4)
-    #     traces = spike_sweep
-    #     plot_spike_sweep(spike_sweep)
+
+    elif traces_type == "spikes":
+        # # pulls out spikes sweep
+        spike_sweep = cell.extract_FI_sweep(sweep_number)
+        traces = spike_sweep
+
     elif traces_type == "single":
         vc_sweep = cell.filtered_traces_dict[selected_condition][sweep_number]
         # vc_sweep = cell.extract_VC_sweep(selected_condition, sweep_number)
@@ -215,6 +223,21 @@ def make_annotated_trace(dataset, csvfile, genotype, file_name, sweep_number):
     print("Finished saving annotated trace plots")
 
 
+def make_spike_traces(dataset, csvfile, genotype, file_name, sweep_number):
+    """
+    Plots a single IC trace to demonstrate STC spike shapes, then also plots
+    zoomed in version of the first few spikes.
+    """
+    cell = get_single_cell(dataset, csvfile, file_name)
+    trace, annotation_values = get_single_cell_traces(
+        cell, traces_type="spikes", sweep_number=4
+    )
+    axes, noaxes = plot_spike_sweeps(genotype, trace)
+    save_spike_figs(axes, noaxes, cell, genotype)
+
+    print("Finished saving spike plots")
+
+
 if __name__ == "__main__":
     dataset = "non-injected"
     csvfile_name = "{}_sweep_info.csv".format(dataset)
@@ -236,4 +259,7 @@ if __name__ == "__main__":
 
     # # plot single VC trace to show onset latency, pick sweep 131
     # make_annotated_trace(dataset, csvfile, "Gg8", "JH20210923_c2.nwb", 0)
+
+    # plot one IC trace to show STC spikes, JH20211130_c1 sweep 4 (Gg8)
+    make_spike_traces(dataset, csvfile, "Gg8", "JH20211130_c1.nwb", 4)
 
