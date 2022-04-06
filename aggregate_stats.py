@@ -120,6 +120,7 @@ class GenotypeSummary(object):
         cell_counts = pd.DataFrame(
             {(self.dataset + "/" + self.genotype): counts_list}
         )
+
         cell_counts.index = pd.MultiIndex.from_tuples(conditions_tuples)
 
         return cell_counts
@@ -190,36 +191,51 @@ def get_genotypes(dataset):
 # has threshold for loop leave
 def get_genotype_summary(dataset, genotypes_list):
     monosyn_count_dict = defaultdict(dict)
+    # genotypes_list = ["OMP"]
     for genotype in genotypes_list:
         genotype_summary = GenotypeSummary(dataset, genotype)
         genotype_summary.get_summary_stats()
 
         # counts_dict = {}  # one cell_counts df for each threshold
+        # for threshold in [None, 2]:
         for threshold in FileSettings.THRESHOLD_LIST:
             if threshold is None:
                 threshold = "nothresh"
             genotype_summary.set_latency_threshold(threshold)
-            monosyn_cell_counts = genotype_summary.count_monosyn_cells()
+            
+            # this creates empty template cell_counts df for when no cells
+            # exist
+            if len(genotype_summary.thresh_concat) == 0:
+                monosyn_cell_counts = monosyn_count_dict[genotype][
+                    "nothresh"
+                ].copy()
+                monosyn_cell_counts.iloc[:, 0] = 0
+            else:
+                monosyn_cell_counts = genotype_summary.count_monosyn_cells()
+
+                averages_fig = plot_averages(
+                    genotype_summary.dataset,
+                    genotype_summary.genotype,
+                    threshold,
+                    genotype_summary.thresh_concat,
+                )
+
+                save_summary_stats_fig(
+                    genotype_summary.genotype,
+                    threshold,
+                    genotype_summary.genotype_figures_folder,
+                    averages_fig,
+                )
+
+                genotype_summary.get_summary_avgs()
+
+                # genotype_summary.calc_summary_avgs()
+                genotype_summary.save_summary_avgs()
+
             monosyn_count_dict[genotype][threshold] = monosyn_cell_counts
+            # print("{} threshold finished".format(threshold))
 
-            genotype_summary.get_summary_avgs()
-
-            # genotype_summary.calc_summary_avgs()
-            genotype_summary.save_summary_avgs()
-
-            averages_fig = plot_averages(
-                genotype_summary.dataset,
-                genotype_summary.genotype,
-                threshold,
-                genotype_summary.thresh_concat,
-            )
-
-            save_summary_stats_fig(
-                genotype_summary.genotype,
-                threshold,
-                genotype_summary.genotype_figures_folder,
-                averages_fig,
-            )
+        # print("{} threshold finished".format(threshold))
 
     return monosyn_count_dict
 
@@ -233,6 +249,7 @@ def collect_selected_averages(counts_dict):
         for dataset in counts_dict.keys():
             # use the genotypes found in dict
             for genotype in counts_dict[dataset].keys():
+                # pdb.set_trace()
                 for filename in os.listdir(
                     os.path.join(FileSettings.TABLES_FOLDER, dataset, genotype)
                 ):
@@ -272,8 +289,6 @@ def get_monosyn_cell_counts(threshold, monosyn_counts_dict):
     """
 
     all_counts = pd.DataFrame()
-    # pdb.set_trace()
-
     for dataset in monosyn_counts_dict.keys():
         # use the genotypes found in dict
         for genotype in monosyn_counts_dict[dataset].keys():
@@ -284,6 +299,7 @@ def get_monosyn_cell_counts(threshold, monosyn_counts_dict):
                 ],
                 axis=1,
             )
+
     all_counts.fillna(0, inplace=True)
     all_counts = all_counts.astype(int)
 

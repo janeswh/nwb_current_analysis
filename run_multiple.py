@@ -9,6 +9,7 @@ import pdb
 
 
 def get_datasets():
+    # dataset_list = ["5dpi"]
     dataset_list = [
         dataset
         for dataset in os.listdir(FileSettings.DATA_FOLDER)
@@ -60,15 +61,17 @@ def main():
         run_dataset_analysis(dataset)
         genotypes_list = get_genotypes(dataset)
         monosyn_cell_counts = get_genotype_summary(dataset, genotypes_list)
+
         dataset_cell_counts[dataset] = monosyn_cell_counts
         print(
             "***Analysis for {} dataset done, #{}/{} datasets.***".format(
                 dataset, dataset_count + 1, len(dataset_list)
             )
         )
-
+    # pdb.set_trace()
     do_cell_counts(dataset_cell_counts, all_patched)
-    collect_selected_averages(monosyn_cell_counts)
+
+    collect_selected_averages(dataset_cell_counts)
 
 
 if __name__ == "__main__":

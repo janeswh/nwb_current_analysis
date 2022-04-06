@@ -32,21 +32,23 @@ def plot_averages(dataset, genotype, threshold, averages_df):
     summary_stats_fig = make_subplots(
         rows=3, cols=2, x_title="Light Intensity (%)"
     )
-    # pdb.set_trace()
-    x_intensity = averages_df["Light Intensity"].unique()
 
     for count, duration in enumerate(durations):
+
+        y_df = averages_df.loc[averages_df["Light Duration"] == duration]
+        # pdb.set_trace()
+        x_intensity = y_df["Light Intensity"]
+
         # mean trace peak amplitude
         summary_stats_fig.add_trace(
             go.Box(
-                x=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Light Intensity"],
-                ].squeeze(),
-                y=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Mean Trace Peak (pA)"],
-                ].squeeze(),
+                x=x_intensity,
+                y=y_df["Mean Trace Peak (pA)"],
+                # if len(y_df) > 1
+                # else averages_df.loc[
+                #     averages_df["Light Duration"] == duration,
+                #     ["Mean Trace Peak (pA)"],
+                # ],
                 name=duration,
                 line=dict(color=color_dict[duration]),
                 legendgroup=duration,
@@ -58,14 +60,8 @@ def plot_averages(dataset, genotype, threshold, averages_df):
         # Mean Onset Latency (ms)
         summary_stats_fig.add_trace(
             go.Box(
-                x=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Light Intensity"],
-                ].squeeze(),
-                y=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Mean Onset Latency (ms)"],
-                ].squeeze(),
+                x=x_intensity,
+                y=y_df["Mean Onset Latency (ms)"],
                 name=duration,
                 line=dict(color=color_dict[duration]),
                 legendgroup=duration,
@@ -77,14 +73,8 @@ def plot_averages(dataset, genotype, threshold, averages_df):
         # onset jitter
         summary_stats_fig.add_trace(
             go.Box(
-                x=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Light Intensity"],
-                ].squeeze(),
-                y=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Onset Jitter"],
-                ].squeeze(),
+                x=x_intensity,
+                y=y_df["Onset Jitter"],
                 name=duration,
                 line=dict(color=color_dict[duration]),
                 legendgroup=duration,
@@ -96,14 +86,8 @@ def plot_averages(dataset, genotype, threshold, averages_df):
         # mean trace onset latency
         summary_stats_fig.add_trace(
             go.Box(
-                x=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Light Intensity"],
-                ].squeeze(),
-                y=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Mean Trace Onset Latency (ms)"],
-                ].squeeze(),
+                x=x_intensity,
+                y=y_df["Mean Trace Onset Latency (ms)"],
                 name=duration,
                 line=dict(color=color_dict[duration]),
                 legendgroup=duration,
@@ -115,14 +99,8 @@ def plot_averages(dataset, genotype, threshold, averages_df):
         # mean time to peak
         summary_stats_fig.add_trace(
             go.Box(
-                x=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Light Intensity"],
-                ].squeeze(),
-                y=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Mean Time to Peak (ms)"],
-                ].squeeze(),
+                x=x_intensity,
+                y=y_df["Mean Time to Peak (ms)"],
                 name=duration,
                 line=dict(color=color_dict[duration]),
                 legendgroup=duration,
@@ -134,14 +112,8 @@ def plot_averages(dataset, genotype, threshold, averages_df):
         # mean trace time to peak
         summary_stats_fig.add_trace(
             go.Box(
-                x=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Light Intensity"],
-                ].squeeze(),
-                y=averages_df.loc[
-                    averages_df["Light Duration"] == duration,
-                    ["Mean Trace Time to Peak (ms)"],
-                ].squeeze(),
+                x=x_intensity,
+                y=y_df["Mean Trace Time to Peak (ms)"],
                 name=duration,
                 line=dict(color=color_dict[duration]),
                 legendgroup=duration,
@@ -483,6 +455,70 @@ def save_response_counts_fig(response_counts_fig):
     )
 
 
+def plot_onset_latency(trace, onset, genotype):
+    """
+    Takes the trace from a single sweep and plots it on a smaller timescale
+    to demonstrate response onset latency
+    """
+
+    onset_time = 520 + onset
+    onset_amp = trace[onset_time]
+
+    layout = go.Layout(plot_bgcolor="rgba(0,0,0,0)")
+    trace_to_plot = trace[515:530]
+
+    color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
+
+    onset_plot = go.Figure()
+
+    onset_plot.add_trace(
+        go.Scatter(
+            x=trace_to_plot.index,
+            y=trace_to_plot,
+            # name=type,
+            mode="lines",
+            line=dict(color=color[genotype], width=4),
+            # legendgroup=duration,
+        )
+    )
+
+    # adds line for light stim
+    onset_plot.add_shape(
+        type="rect",
+        x0=520,
+        y0=30,
+        x1=521,
+        y1=35,
+        line=dict(color="#33F7FF"),
+        fillcolor="#33F7FF",
+    )
+
+    # adds annotation for onset latency
+    onset_plot.add_annotation(
+        x=onset_time + 1.5,
+        y=onset_amp,
+        text="Response onset",
+        font=dict(size=20),
+        align="left",
+        showarrow=False,
+        # yshift=10,
+    )
+
+    onset_plot.add_trace(
+        go.Scatter(
+            x=[onset_time],
+            y=[onset_amp],
+            mode="markers",
+            # text="Response onset",
+            # textposition="middle right",
+            # textfont=dict(size=20),
+        )
+    )
+
+    onset_plot.show()
+    # pdb.set_trace()
+
+
 def make_one_plot_trace(file_name, cell_trace, type, inset=False):
     """
     Makes the trace data used to plot later. "type" parameter determines the 
@@ -739,8 +775,6 @@ def plot_spike_sweep(trace):
     spike_noaxes = go.Figure(spike_fig)
     spike_noaxes.update_xaxes(showgrid=False, visible=False)
     spike_noaxes.update_yaxes(showgrid=False, visible=False)
-
-    pdb.set_trace()
 
     return spike_fig, spike_noaxes
 

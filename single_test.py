@@ -19,6 +19,7 @@ import plotly.io as pio
 pio.renderers.default = "browser"
 
 from acq_parameters import *
+from file_settings import FileSettings
 import pdb
 
 
@@ -32,9 +33,10 @@ class JaneCell(object):
         self.raw_ic_df = None
         self.spikes_sweeps_dict = None
         self.drug_sweeps_dict = None
-        self.IC_sweeps_dict = None
+        self.ic_sweeps_dict = None
         self.sweeps_dict = None
 
+        self.filtered_traces_dict = None
         self.cell_analysis_dict = None
         self.power_curve_df = None
         self.tuples = None
@@ -238,12 +240,12 @@ class JaneCell(object):
             sweeps_dict[stim_name] = stim_sweeps_IC
 
         # drop keys with empty dataframes
-        self.IC_sweeps_dict = {
+        self.ic_sweeps_dict = {
             k: v for (k, v) in sweeps_dict.items() if not v.empty
         }
 
     def make_sweeps_dict(self):
-        """
+        """gv
         Create dict with stim name as keys, VC data as values
         """
 
@@ -444,11 +446,11 @@ class JaneCell(object):
         jitter: float or pandas.Series
             The std of latency to response onset (if calculated on multiple traces)
         """
-        onset_amp = abs(epsc_peaks * 0.05)
+        onset_amp = epsc_peaks * 0.05
         latency = []
         for sweep in range(len(window.columns)):
-            sweep_window = abs(window.iloc[:, sweep])
-            onset_idx = np.argmax(sweep_window >= onset_amp[sweep])
+            sweep_window = window.iloc[:, sweep]
+            onset_idx = np.argmax(sweep_window <= onset_amp[sweep])
             onset_time = sweep_window.index[onset_idx]
             sweep_latency = onset_time - STIM_TIME
             latency.append(sweep_latency)
@@ -566,12 +568,29 @@ class JaneCell(object):
 
         return sub_mean_trace
 
+    def extract_VC_sweep(self, selected_condition, sweep_number):
+        """
+        Extracts a single VC sweep for plotting onset latency. Select the
+        sweep with sweep_number, which is the sweep # within a given set of
+        stim sweeps.
+        """
+        # if self.cell_name == "JH20210923_c2":
+        #     selected_condition = "50%, 1 ms"
+        # else:
+        #     selected_condition = ",".join(FileSettings.SELECTED_CONDITION)
+
+        selected_sweep = self.filtered_traces_dict[selected_condition][
+            sweep_number
+        ]
+
+        return selected_sweep
+
     def extract_FI_sweep(self, sweep_number):
         """
         Extracts a single FI step sweep for plotting STC spikes. Select the
         sweep with sweep_number
         """
-        sweeps_dict = self.IC_sweeps_dict
+        sweeps_dict = self.ic_sweeps_dict
         traces = sweeps_dict["FI current steps"]
 
         # convert time to ms
@@ -625,6 +644,9 @@ class JaneCell(object):
         mean_baseline = self.calculate_mean_baseline(
             mean_trace_filtered, baseline_start=100, baseline_end=450
         )
+
+        # subtract mean baseline from all filtered traces
+        traces_filtered_sub = traces_filtered - mean_baseline
 
         # find std of baseline
         std_baseline = self.calculate_std_baseline(
@@ -690,11 +712,18 @@ class JaneCell(object):
             "Response 3x STD": responses["Response 3x STD"][0],
         }
 
-        return stim_condition, sub_mean_trace, current_peaks, stim_dict
+        return (
+            stim_condition,
+            traces_filtered_sub,
+            sub_mean_trace,
+            current_peaks,
+            stim_dict,
+        )
 
     def make_cell_analysis_dict(self):
 
         # create dict to hold analysis results for each stim set
+        filtered_traces_dict = {}
         cell_analysis_dict = {}
         power_curve_df = pd.DataFrame()
         all_mean_traces = pd.DataFrame()
@@ -702,11 +731,13 @@ class JaneCell(object):
         for stim_id in range(len(list(self.sweeps_dict))):
             (
                 stim_condition,
+                traces_filtered_sub,
                 sub_mean_trace,
                 current_peaks,
                 stim_dict,
             ) = self.calculate_stim_stats(stim_id)
             cell_analysis_dict[stim_condition] = stim_dict
+            filtered_traces_dict[stim_condition] = traces_filtered_sub
 
             # collects peaks into power_curve_df, column for each stim condition
             stim_peaks = pd.DataFrame(current_peaks)
@@ -721,6 +752,7 @@ class JaneCell(object):
         self.cell_analysis_dict = cell_analysis_dict
         self.power_curve_df = power_curve_df
         self.all_mean_traces = all_mean_traces
+        self.filtered_traces_dict = filtered_traces_dict
 
     # export analysis values to csv
 
@@ -1102,7 +1134,7 @@ class JaneCell(object):
                     power_curve_stats["Light Duration"] == duration,
                     ["Light Intensity"],
                 ]
-
+            pdb.set_trace()
             # onset latency
             curve_stats_fig.add_trace(
                 go.Box(
