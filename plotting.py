@@ -551,7 +551,7 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     # add line and annotation for time to peak
     annotated_plot.add_shape(
         type="line",
-        x0=518,
+        x0=520,
         y0=peak_amp,
         x1=peak_time,
         y1=peak_amp,
