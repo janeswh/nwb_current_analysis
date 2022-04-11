@@ -848,12 +848,7 @@ class JaneCell(object):
 
         stats_cleaned = self.cell_analysis_df.copy()
         stats_cleaned = stats_cleaned.drop(
-            [
-                "Raw Peaks (pA)",
-                "Mean Raw Peaks (pA)",
-                "Onset Latencies (ms)",
-                "Time to Peaks (ms)",
-            ],
+            ["Raw Peaks (pA)", "Onset Latencies (ms)", "Time to Peaks (ms)",],
             axis=1,
         )
 
@@ -1134,7 +1129,7 @@ class JaneCell(object):
                     power_curve_stats["Light Duration"] == duration,
                     ["Light Intensity"],
                 ]
-            pdb.set_trace()
+            # pdb.set_trace()
             # onset latency
             curve_stats_fig.add_trace(
                 go.Box(
