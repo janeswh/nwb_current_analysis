@@ -1073,3 +1073,230 @@ def save_spike_figs(axes, noaxes, cell, genotype):
     noaxes.write_image(
         os.path.join(FileSettings.PAPER_FIGURES_FOLDER, noaxes_filename)
     )
+
+
+def plot_power_curve_traces(mean_trace_df, sweeps_df):
+    """
+    Plots the baseline-subtracted mean trace for each stimulus condition around the response time, 
+    one subplot for each duration, if applicable. Does this for one cell.
+    """
+
+    # intensities and durations, and color might need to become self variables
+
+    sweep_analysis_values = sweeps_df
+    intensities = sweep_analysis_values["Light Intensity"].unique()
+    durations = sweep_analysis_values["Light Duration"].unique()
+
+    # blue colors
+    color = ["#0859C6", "#10A5F5", "#00DBFF"]
+
+    stim_columns = mean_trace_df.loc[:, ["Light Intensity", "Light Duration"]]
+    traces_to_plot = mean_trace_df.loc[
+        :, 500.00:700.00
+    ]  # only plots first 400-1000 ms
+    traces_to_plot_combined = pd.concat([stim_columns, traces_to_plot], axis=1)
+
+    power_curve_traces = make_subplots(
+        # rows=len(intensities), cols=1,
+        rows=1,
+        cols=len(intensities),
+        subplot_titles=(intensities[::-1]),
+        shared_yaxes=True,
+        x_title="Time (ms)",
+        y_title="Amplitude (pA)",
+    )
+
+    # new method for hiding duplicate legends:
+    # create a list to track each time a duration has been plotted, and only show legends
+    # for the first time the duration is plotted
+    duration_checker = []
+
+    for intensity_count, intensity in enumerate(intensities):
+        for duration_count, duration in enumerate(durations):
+
+            # plot sweeps from all intensities of one duration
+            y_toplot = traces_to_plot_combined.loc[
+                (traces_to_plot_combined["Light Intensity"] == intensity)
+                & (traces_to_plot_combined["Light Duration"] == duration),
+                500.00::,
+            ].squeeze()
+            power_curve_traces.add_trace(
+                go.Scatter(
+                    x=traces_to_plot.columns,
+                    y=y_toplot,
+                    name=duration,
+                    mode="lines",
+                    line=dict(color=color[duration_count]),
+                    showlegend=False if duration in duration_checker else True,
+                    legendgroup=duration,
+                ),
+                # row=intensity_count+1, col=1
+                row=1,
+                col=len(intensities) - intensity_count,
+            )
+            if len(y_toplot) != 0:
+                duration_checker.append(duration)
+
+    # below is code from stack overflow to hide duplicate legends
+    # names = set()
+    # mean_traces_fig.for_each_trace(
+    #     lambda trace:
+    #         trace.update(showlegend=False)
+    #         if (trace.name in names) else names.add(trace.name))
+
+    power_curve_traces.update_layout(
+        title_text="Light Intensity",
+        title_x=0.45,
+        legend_title_text="Light Duration",
+        title_font=dict(size=20, family="Arial"),
+        legend=dict(font=dict(family="Arial", size=16)),
+    )
+
+    power_curve_traces.update_xaxes(
+        title_font=dict(size=24, family="Arial"),
+        tickfont=dict(size=16, family="Arial"),
+        tickangle=45,
+        automargin=True,
+        autorange=True,
+    )
+
+    power_curve_traces.update_yaxes(
+        title_font=dict(size=24, family="Arial"),
+        tickfont=dict(size=16, family="Arial"),
+        tick0=500,
+        dtick=100,
+        automargin=True,
+    )
+
+    power_curve_traces.update_annotations(font_size=20, font_family="Arial")
+    # power_curve_traces.show()
+
+    return power_curve_traces
+
+
+def save_power_curve_traces(genotype, cell_name, fig):
+    """
+    Saves the power curve traces figs as static png file
+    """
+
+    if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
+        os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
+
+    filename = "{}_{}_power_curve_traces.png".format(cell_name, genotype)
+
+    fig.write_image(os.path.join(FileSettings.PAPER_FIGURES_FOLDER, filename))
+
+
+def graph_power_curve(power_curve_stats, sweep_analysis_values):
+    """
+        do a loop through available durations and intensities instead of hard
+        coding. maybe need MultiIndex after all?? Put power curve + all stats 
+        measurements in subplots
+        """
+
+    intensities = sweep_analysis_values["Light Intensity"].unique()
+    durations = sweep_analysis_values["Light Duration"].unique()
+
+    color = ["#0859C6", "#10A5F5", "#00DBFF"]
+
+    power_curve = go.Figure()
+
+    # make the x-axis of light intensity to be used in each subplot
+
+    x_sweep_dict = {}
+
+    for duration in durations:
+        x_sweep_intensity = sweep_analysis_values.loc[
+            sweep_analysis_values["Light Duration"] == duration,
+            ["Light Intensity"],
+        ]
+
+        x_sweep_dict[duration] = x_sweep_intensity
+
+    # pdb.set_trace()
+    for count, duration in enumerate(durations):
+
+        error = power_curve_stats.loc[
+            power_curve_stats["Light Duration"] == duration, ["SEM"]
+        ].squeeze()
+
+        if len(intensities) > 1:
+            if isinstance(error, float) != True:
+                # only make power curve if more than one intensity exists
+
+                # power curve
+                power_curve.add_trace(
+                    go.Scatter(
+                        x=power_curve_stats.loc[
+                            power_curve_stats["Light Duration"] == duration,
+                            ["Light Intensity"],
+                        ].squeeze(),
+                        y=power_curve_stats.loc[
+                            power_curve_stats["Light Duration"] == duration,
+                            ["Mean Response Amplitude (pA)"],
+                        ].squeeze(),
+                        name=duration,
+                        error_y=dict(
+                            type="data", array=error.values, visible=True
+                        ),
+                        mode="lines+markers",
+                        line=dict(color=color[count]),
+                        legendgroup=duration,
+                    ),
+                )
+
+        # Update xaxis properties
+        # curve_stats_fig.update_xaxes(autorange="reversed")
+        # this defines the intensities order for x-axes
+        power_curve.update_xaxes(
+            title_text="Light Intensity",
+            categoryorder="array",
+            categoryarray=np.flip(intensities),
+            title_font=dict(size=20, family="Arial"),
+            tickfont=dict(size=16, family="Arial"),
+        )
+
+        # Update yaxis properties
+        power_curve.update_yaxes(
+            title_text="Response Amplitude (pA)",
+            autorange="reversed",
+            title_font=dict(size=20, family="Arial"),
+            tickfont=dict(size=16, family="Arial"),
+        )
+
+    power_curve.update_layout(
+        # yaxis_title='Onset Latency (ms)',
+        boxmode="group"  # group together boxes of the different traces for each value of x
+    )
+
+    # below is code from stack overflow to hide duplicate legends
+    names = set()
+    power_curve.for_each_trace(
+        lambda trace: trace.update(showlegend=False)
+        if (trace.name in names)
+        else names.add(trace.name)
+    )
+
+    power_curve.update_layout(
+        legend_title_text="Light Duration",
+        font=dict(family="Arial", size=20),
+        legend=dict(font=dict(family="Arial", size=16)),
+    )
+    power_curve.update_annotations(font_size=20, font_family="Arial")
+
+    # power_curve.show()
+
+    return power_curve
+
+
+def save_power_curve(genotype, cell_name, fig):
+    """
+    Saves the power curve traces figs as static png file
+    """
+
+    if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
+        os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
+
+    filename = "{}_{}_power_curve.png".format(cell_name, genotype)
+
+    fig.write_image(os.path.join(FileSettings.PAPER_FIGURES_FOLDER, filename))

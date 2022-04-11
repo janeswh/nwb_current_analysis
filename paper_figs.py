@@ -260,6 +260,41 @@ if __name__ == "__main__":
     # # plot single VC trace to show onset latency, pick sweep 131
     # make_annotated_trace(dataset, csvfile, "Gg8", "JH20210923_c2.nwb", 0)
 
-    # plot one IC trace to show STC spikes, JH20211130_c1 sweep 4 (Gg8)
-    make_spike_traces(dataset, csvfile, "Gg8", "JH20211130_c1.nwb", 4)
+    # # plot one IC trace to show STC spikes, JH20211130_c1 sweep 4 (Gg8)
+    # make_spike_traces(dataset, csvfile, "Gg8", "JH20211130_c1.nwb", 4)
+
+    # plot example response traces and power curve amplitudes for one OMP cell
+    # JH20211103_c3
+    file_name = "JH20211103_c3.nwb"
+    genotype = "OMP"
+
+    cell = get_single_cell(dataset, csvfile, file_name)
+    # 2 drops depolarized and esc AP sweeps from VC data if applicable
+    cell.drop_sweeps()
+
+    # 3 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
+    cell.make_sweeps_dict()
+
+    # 4 runs stats on sweeps and creates a dict for each stim condition
+    cell.make_cell_analysis_dict()
+
+    # 5 calculates power curve for plotting
+    cell.make_power_curve_stats_df()
+
+    # 6 calculates response stats for plotting
+    cell.make_stats_df()
+
+    # 7 plots mean traces
+    cell.make_mean_traces_df()
+    power_curve_traces = plot_power_curve_traces(
+        cell.mean_trace_df, cell.sweep_analysis_values
+    )
+
+    save_power_curve_traces(genotype, cell.cell_name, power_curve_traces)
+
+    power_curve_fig = graph_power_curve(
+        cell.power_curve_stats, cell.sweep_analysis_values
+    )
+
+    save_power_curve(genotype, cell.cell_name, power_curve_fig)
 
