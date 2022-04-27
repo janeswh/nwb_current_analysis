@@ -460,14 +460,14 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     Takes the trace from a single sweep and plots it on a smaller timescale
     to demonstrate response onset latency, time to peak, and peak amplitude.
     """
-    onset = annotation_values[0]
-    peak_amp = annotation_values[1]
-    time_topeak = annotation_values[2]
+    onset_time = annotation_values[0]
+    onset_latency = annotation_values[1]
+    peak_amp = annotation_values[2]
+    time_topeak = annotation_values[3]
 
-    onset_time = 520 + onset
     onset_amp = trace[onset_time]
 
-    peak_time = 520 + time_topeak
+    peak_time = onset_time + time_topeak
 
     layout = go.Layout(plot_bgcolor="rgba(0,0,0,0)")
     trace_to_plot = trace[518:530]
@@ -502,7 +502,9 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     annotated_plot.add_annotation(
         x=onset_time + 1.5,
         y=onset_amp,
-        text="Response onset:<br>{} ms latency".format(round(onset, 1)),
+        text="Response onset:<br>{} ms latency".format(
+            round(onset_latency, 1)
+        ),
         font=dict(size=24),
         # align="left",
         showarrow=False,
@@ -551,19 +553,20 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     # add line and annotation for time to peak
     annotated_plot.add_shape(
         type="line",
-        x0=520,
+        x0=onset_time,
         y0=peak_amp,
         x1=peak_time,
         y1=peak_amp,
         line=dict(dash="dash", width=3, color="#33B1FF"),
     )
     annotated_plot.add_annotation(
-        x=(peak_time - 518) / 2 + 518,
+        # x=(peak_time - onset_time - 2) / 2 + (onset_time - 2),
+        x=onset_time,
         y=peak_amp,
         text="Time to peak:<br>{} ms".format(round(time_topeak, 1)),
         showarrow=False,
-        yshift=50,
-        xshift=-10,
+        # yshift=50,
+        xshift=-70,
         font=dict(size=24, family="Arial"),
     )
 

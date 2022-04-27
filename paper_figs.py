@@ -70,7 +70,11 @@ def get_annotation_values(cell, selected_condition, sweep_number):
     annotating example trace.
     """
 
-    onset = cell.cell_analysis_dict[selected_condition][
+    onset_time = cell.cell_analysis_dict[selected_condition][
+        "Onset Times (ms)"
+    ][sweep_number]
+
+    onset_latency = cell.cell_analysis_dict[selected_condition][
         "Onset Latencies (ms)"
     ][sweep_number]
 
@@ -82,7 +86,7 @@ def get_annotation_values(cell, selected_condition, sweep_number):
         "Time to Peaks (ms)"
     ][sweep_number]
 
-    return [onset, amplitude_peak, time_topeak]
+    return [onset_time, onset_latency, amplitude_peak, time_topeak]
 
 
 def get_single_cell_traces(
@@ -238,36 +242,10 @@ def make_spike_traces(dataset, csvfile, genotype, file_name, sweep_number):
     print("Finished saving spike plots")
 
 
-if __name__ == "__main__":
-    dataset = "non-injected"
-    csvfile_name = "{}_sweep_info.csv".format(dataset)
-    csvfile = os.path.join(
-        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-        dataset,
-        csvfile_name,
-    )
-
-    # # inset plot for Gg8, list big response cell first
-    # main_plot_files = ["JH20210923_c2.nwb", "JH20210922_c1.nwb"]
-    # inset_plot_file = "JH20211130_c1.nwb"
-    # make_inset_plot(dataset, csvfile, "Gg8", main_plot_files, inset_plot_file)
-
-    # # inset plot for OMP
-    # main_plot_files = ["JH20211005_c3.nwb", "JH20211029_c1.nwb"]
-    # inset_plot_file = "JH20211103_c3.nwb"
-    # make_inset_plot(dataset, csvfile, "OMP", main_plot_files, inset_plot_file)
-
-    # # plot single VC trace to show onset latency, pick sweep 131
-    # make_annotated_trace(dataset, csvfile, "Gg8", "JH20210923_c2.nwb", 0)
-
-    # # plot one IC trace to show STC spikes, JH20211130_c1 sweep 4 (Gg8)
-    # make_spike_traces(dataset, csvfile, "Gg8", "JH20211130_c1.nwb", 4)
-
-    # plot example response traces and power curve amplitudes for one OMP cell
-    # JH20211103_c3
-    file_name = "JH20211103_c3.nwb"
-    genotype = "OMP"
-
+def make_power_curves(dataset, csvfile, genotype, file_name):
+    """
+    Plots example traces and power curve amplitudes for one cell
+    """
     cell = get_single_cell(dataset, csvfile, file_name)
     # 2 drops depolarized and esc AP sweeps from VC data if applicable
     cell.drop_sweeps()
@@ -297,4 +275,34 @@ if __name__ == "__main__":
     )
 
     save_power_curve(genotype, cell.cell_name, power_curve_fig)
+
+
+if __name__ == "__main__":
+    dataset = "non-injected"
+    csvfile_name = "{}_sweep_info.csv".format(dataset)
+    csvfile = os.path.join(
+        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+        dataset,
+        csvfile_name,
+    )
+
+    # # inset plot for Gg8, list big response cell first
+    # main_plot_files = ["JH20210923_c2.nwb", "JH20210922_c1.nwb"]
+    # inset_plot_file = "JH20211130_c1.nwb"
+    # make_inset_plot(dataset, csvfile, "Gg8", main_plot_files, inset_plot_file)
+
+    # # inset plot for OMP
+    # main_plot_files = ["JH20211005_c3.nwb", "JH20211029_c1.nwb"]
+    # inset_plot_file = "JH20211103_c3.nwb"
+    # make_inset_plot(dataset, csvfile, "OMP", main_plot_files, inset_plot_file)
+
+    # # plot single VC trace to show onset latency, pick sweep 131
+    # make_annotated_trace(dataset, csvfile, "Gg8", "JH20210923_c2.nwb", 0)
+
+    # # plot one IC trace to show STC spikes, JH20211130_c1 sweep 4 (Gg8)
+    # make_spike_traces(dataset, csvfile, "Gg8", "JH20211130_c1.nwb", 4)
+
+    # plot example response traces and power curve amplitudes for one OMP cell
+    # JH20211103_c3
+    make_power_curves(dataset, csvfile, "OMP", "JH20211103_c3.nwb")
 

@@ -441,28 +441,34 @@ class JaneCell(object):
 
         Returns
         -------
+        onset: float or pandas.Series
+            The absolute time of response onset
         latency: float or pandas.Series
-            The latency of response onset, defined as 5% of epsc_peaks
+            The latency of response onset from stim time, defined as 5% of 
+            epsc_peaks
         jitter: float or pandas.Series
-            The std of latency to response onset (if calculated on multiple traces)
+            The std of latency to response onset (if calculated on multiple 
+            traces)
         """
         onset_amp = epsc_peaks * 0.05
         latency = []
+        onset = []
         for sweep in range(len(window.columns)):
             sweep_window = window.iloc[:, sweep]
             onset_idx = np.argmax(sweep_window <= onset_amp[sweep])
             onset_time = sweep_window.index[onset_idx]
+            onset.append(onset_time)
             sweep_latency = onset_time - STIM_TIME
             latency.append(sweep_latency)
 
         if mean_trace is False:
             jitter = np.std(latency)
-            return latency, jitter
+            return onset, latency, jitter
 
         elif mean_trace is True:
-            return latency, None
+            return onset, latency, None
 
-    def calculate_timetopeak(self, window, response_onset, mean_trace=False):
+    def calculate_timetopeak(self, window, response_onset):
         """
         Find the mean baseline in a given time series
         Parameters
@@ -470,19 +476,16 @@ class JaneCell(object):
         window: pandas.Series or pandas.DataFrame
             The time series data window in which the peak is found.
         response_onset: int or float
-            Time in ms at which response onset occurs (also response latency).
-        mean_trace: bool
-            Determines whether or not to return jitter in addition to latency. 
+            Time in ms at which response onset occurs.
 
         Returns
         -------
-        latency: float or pandas.Series
-            The latency to peak from stim onset, in ms
-        jitter: float or pandas.Series
-            The std of latency to peak (if calculated on multiple traces)
+        time_to_peak: float or pandas.Series
+            The time to peak from response onset, in ms
+
         """
         peak_time = window.idxmin()
-        time_to_peak = peak_time - STIM_TIME
+        time_to_peak = peak_time - response_onset
 
         return time_to_peak
 
@@ -666,20 +669,22 @@ class JaneCell(object):
         current_peaks_mean = current_peaks.mean()
 
         # find latency to response onset and jitter, in ms
-        latency, jitter = self.calculate_latency_jitter(
+        onset, latency, jitter = self.calculate_latency_jitter(
             peak_window, current_peaks, mean_trace=False
         )
-        mean_trace_latency = self.calculate_latency_jitter(
+        (
+            mean_trace_onset,
+            mean_trace_latency,
+            mean_trace_jitter,
+        ) = self.calculate_latency_jitter(
             mean_peak_window, mean_trace_peak, mean_trace=True
         )
         latency_mean = np.asarray(latency).mean()
 
         # find time to peak, in ms
-        time_to_peak = self.calculate_timetopeak(
-            peak_window, latency, mean_trace=False
-        )
+        time_to_peak = self.calculate_timetopeak(peak_window, onset)
         mean_trace_time_to_peak = self.calculate_timetopeak(
-            mean_peak_window, latency, mean_trace=True
+            mean_peak_window, mean_trace_onset
         )
         time_to_peak_mean = time_to_peak.mean()
 
@@ -699,11 +704,12 @@ class JaneCell(object):
             "Raw Peaks (pA)": current_peaks.tolist(),
             "Mean Raw Peaks (pA)": current_peaks_mean,
             "Mean Trace Peak (pA)": mean_trace_peak[0],
+            "Onset Times (ms)": onset,
             "Onset Latencies (ms)": latency,
             "Onset Jitter": jitter,
             "Mean Onset Latency (ms)": latency_mean,
             "Onset SEM": sem(latency),
-            "Mean Trace Onset Latency (ms)": mean_trace_latency[0][0],
+            "Mean Trace Onset Latency (ms)": mean_trace_latency[0],
             "Time to Peaks (ms)": time_to_peak.tolist(),
             "Mean Time to Peak (ms)": time_to_peak_mean,
             "Time to Peak SEM": sem(time_to_peak),
