@@ -577,7 +577,7 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     annotated_plot.add_annotation(
         x=528,
         y=-300,
-        yshift=-25,
+        yshift=-18,
         text="2 ms",
         showarrow=False,
         font=dict(size=20),
@@ -589,10 +589,10 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     annotated_plot.add_annotation(
         x=529,
         y=-250,
-        xshift=25,
+        xshift=40,
         text="100 pA",
         showarrow=False,
-        textangle=-90,
+        # textangle=-90,
         font=dict(size=20),
     )
 
@@ -730,21 +730,21 @@ def make_inset_plot_fig(
 
     # adds horizontal line + text for main plot scale bar
     inset_plot.add_shape(
-        type="line", x0=550, y0=-600, x1=575, y1=-600,
+        type="line", x0=530, y0=-600, x1=555, y1=-600,
     )
     inset_plot.add_annotation(
-        x=562.5, y=-650, text="25 ms", showarrow=False, font=dict(size=20)
+        x=542.5, y=-650, text="25 ms", showarrow=False, font=dict(size=20)
     )
 
     # adds vertical line + text for main plot scale bar
-    inset_plot.add_shape(type="line", x0=575, y0=-600, x1=575, y1=-400)
+    inset_plot.add_shape(type="line", x0=555, y0=-600, x1=555, y1=-400)
 
     inset_plot.add_annotation(
-        x=585,
+        x=575,
         y=-500,
         text="200 pA",
         showarrow=False,
-        textangle=-90,
+        # textangle=-90,
         font=dict(size=20),
     )
 
@@ -782,11 +782,11 @@ def make_inset_plot_fig(
     inset_plot.add_annotation(
         xref="x2",
         yref="y2",
-        x=645,
+        x=650 if genotype == "Gg8" else 660,
         y=-250 if genotype == "OMP" else -30,
         text="100 pA" if genotype == "OMP" else "10 pA",
         showarrow=False,
-        textangle=-90,
+        # textangle=-90,
         font=dict(size=16),
     )
 
@@ -955,7 +955,7 @@ def plot_spike_sweeps(genotype, trace):
         yref="y1",
         x=1500,
         y=-10,
-        yshift=-25,
+        yshift=-20,
         text="200 ms",
         showarrow=False,
         font=dict(size=20),
@@ -971,10 +971,10 @@ def plot_spike_sweeps(genotype, trace):
         yref="y1",
         x=1600,
         y=0,
-        xshift=25,
+        xshift=40,
         text="20 mV",
         showarrow=False,
-        textangle=-90,
+        # textangle=-90,
         font=dict(size=20),
     )
 
@@ -1015,7 +1015,7 @@ def plot_spike_sweeps(genotype, trace):
         yref="y2",
         x=625,
         y=0,
-        yshift=-25,
+        yshift=-20,
         text="25 ms",
         showarrow=False,
         font=dict(size=20),
@@ -1031,10 +1031,10 @@ def plot_spike_sweeps(genotype, trace):
         yref="y2",
         x=637.5,
         y=5,
-        xshift=25,
+        xshift=40,
         text="10 mV",
         showarrow=False,
-        textangle=-90,
+        # textangle=-90,
         font=dict(size=20),
     )
 
