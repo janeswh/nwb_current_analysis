@@ -649,7 +649,7 @@ class JaneCell(object):
         )
 
         # subtract mean baseline from all filtered traces
-        traces_filtered_sub = traces_filtered - mean_baseline
+        traces_filtered_sub = traces_filtered - baseline
 
         # find std of baseline
         std_baseline = self.calculate_std_baseline(
