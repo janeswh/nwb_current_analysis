@@ -474,6 +474,9 @@ def plot_annotated_trace(trace, annotation_values, genotype):
 
     color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
 
+    # the traces used in this figure can be saved in csv using:
+    # trace_to_plot.to_csv("annotated_trace.csv")
+
     annotated_plot = go.Figure(layout=layout)
 
     annotated_plot.add_trace(
@@ -665,6 +668,9 @@ def make_one_plot_trace(file_name, cell_trace, type, inset=False):
             500.00::,
         ].squeeze()
 
+    # the traces used in this figure can be saved in csv using:
+    # trace_y_toplot.to_csv(f"{type}_example_trace.csv")
+
     color = {
         "Control": "#414145",
         "NBQX": "#EE251F",
@@ -673,6 +679,7 @@ def make_one_plot_trace(file_name, cell_trace, type, inset=False):
         "Gg8 cell 1": "#7a81ff",
         "Gg8 cell 2": "#A4A8F9",
     }
+
     if inset is True:
         plot_trace = go.Scatter(
             x=trace_y_toplot.index
@@ -866,6 +873,9 @@ def plot_spike_sweeps(genotype, trace):
     spikes_plots = make_subplots(
         rows=1, cols=2, column_widths=[0.7, 0.3], horizontal_spacing=0.05
     )
+
+    # the traces used in this figure can be saved in csv using:
+    # to_plot.csv("STC_spike_trace.csv")
     # spikes_plots = go.Figure(layout=layout)
     # pdb.set_trace()
 
@@ -1109,6 +1119,10 @@ def plot_power_curve_traces(mean_trace_df, sweeps_df):
         y_title="Amplitude (pA)",
     )
 
+    # the traces used in this figure can be saved in csv using:
+    # raw traces = traces_to_plot_combined.T
+    # raw_traces.to_csv("power_curve_traces.csv")
+
     # new method for hiding duplicate legends:
     # create a list to track each time a duration has been plotted, and only show legends
     # for the first time the duration is plotted
@@ -1123,6 +1137,7 @@ def plot_power_curve_traces(mean_trace_df, sweeps_df):
                 & (traces_to_plot_combined["Light Duration"] == duration),
                 500.00::,
             ].squeeze()
+
             power_curve_traces.add_trace(
                 go.Scatter(
                     x=traces_to_plot.columns,
@@ -1204,8 +1219,10 @@ def graph_power_curve(power_curve_stats, sweep_analysis_values):
 
     power_curve = go.Figure()
 
-    # make the x-axis of light intensity to be used in each subplot
+    # the traces used in this figure can be saved in csv using:
+    # power_curve_stats.to_csv("power_curve_amplitude.csv")
 
+    # make the x-axis of light intensity to be used in each subplot
     x_sweep_dict = {}
 
     for duration in durations:
@@ -1216,7 +1233,6 @@ def graph_power_curve(power_curve_stats, sweep_analysis_values):
 
         x_sweep_dict[duration] = x_sweep_intensity
 
-    # pdb.set_trace()
     for count, duration in enumerate(durations):
 
         error = power_curve_stats.loc[
