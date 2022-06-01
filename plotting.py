@@ -674,6 +674,10 @@ def make_one_plot_trace(file_name, cell_trace, type, inset=False):
     color = {
         "Control": "#414145",
         "NBQX": "#EE251F",
+        "3dpi MMZ cell 1": "#7a81ff",
+        "3dpi MMZ cell 2": "#A4A8F9",
+        "Dox 5dpi cell 1": "#7a81ff",
+        "Dox 5dpi cell 2": "#A4A8F9",
         "OMP cell 1": "#ff9300",
         "OMP cell 2": "#FBB85C",
         "Gg8 cell 1": "#7a81ff",
@@ -1339,10 +1343,29 @@ def save_power_curve(genotype, cell_name, fig):
     fig.write_image(os.path.join(FileSettings.PAPER_FIGURES_FOLDER, filename))
 
 
-def plot_example_traces(genotype, traces):
+def plot_example_traces(genotype, traces, small_scalebar=False):
     """
     Plots example traces without insets.
     """
+    # sets scale bar parameters depending on amplitude of traces
+    if small_scalebar == False:
+        y0_light = 100
+        y1_light = 250
+        y0 = -600
+        y1 = -200
+        y_time_text = -725
+        y_current_text = -400
+        current_text = "400 pA"
+
+    else:
+        y0_light = 4.5
+        y1_light = 12
+        y0 = -30
+        y1 = -10
+        y_time_text = -36.25
+        y_current_text = -20
+        current_text = "20 pA"
+
     fig = make_subplots(rows=1, cols=len(traces), shared_yaxes=True)
     for count, trace in enumerate(traces):
         fig.add_trace(trace, row=1, col=count + 1)
@@ -1351,9 +1374,9 @@ def plot_example_traces(genotype, traces):
         fig.add_shape(
             type="rect",
             x0=520,
-            y0=50,
+            y0=y0_light,
             x1=521,
-            y1=100,
+            y1=y1_light,
             line=dict(color="#33F7FF"),
             fillcolor="#33F7FF",
             row=1,
@@ -1361,10 +1384,10 @@ def plot_example_traces(genotype, traces):
         )
 
     # adds horizontal line + text for main plot scale bar
-    fig.add_shape(type="line", x0=630, y0=-600, x1=655, y1=-600, row=1, col=2)
+    fig.add_shape(type="line", x0=630, y0=y0, x1=655, y1=y0, row=1, col=2)
     fig.add_annotation(
         x=642.5,
-        y=-725,
+        y=y_time_text,
         text="25 ms",
         showarrow=False,
         font=dict(size=20),
@@ -1373,12 +1396,12 @@ def plot_example_traces(genotype, traces):
     )
 
     # adds vertical line + text for main plot scale bar
-    fig.add_shape(type="line", x0=655, y0=-600, x1=655, y1=-400, row=1, col=2)
+    fig.add_shape(type="line", x0=655, y0=y0, x1=655, y1=y1, row=1, col=2)
 
     fig.add_annotation(
         x=675,
-        y=-500,
-        text="200 pA",
+        y=y_current_text,
+        text=current_text,
         showarrow=False,
         font=dict(size=20),
         row=1,

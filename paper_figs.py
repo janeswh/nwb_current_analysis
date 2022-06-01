@@ -158,6 +158,11 @@ def make_example_traces(dataset, csvfile, genotype, main_plot_files):
     """
     Makes plotting traces without inset plots.
     """
+    if dataset == "dox_5dpi":
+        small_scalebar = True
+    else:
+        small_scalebar = False
+
     main_type_names = [
         "{} cell 1".format(genotype),
         "{} cell 2".format(genotype),
@@ -183,8 +188,10 @@ def make_example_traces(dataset, csvfile, genotype, main_plot_files):
         ephys_traces_plotted = pd.concat(
             [ephys_traces_plotted, plotted_trace], axis=1
         )
-    fig = plot_example_traces(genotype, main_plot_traces)
-    new_save_example_traces_figs(fig, ephys_traces_plotted, "3dpi_MMZ")
+    fig = plot_example_traces(
+        genotype, main_plot_traces, small_scalebar=small_scalebar
+    )
+    new_save_example_traces_figs(fig, ephys_traces_plotted, dataset)
     # save_fig_to_png(
     #     fig,
     #     legend=True,
@@ -356,5 +363,16 @@ if __name__ == "__main__":
         csvfile_name,
     )
     main_plot_files = ["JH20211202_c1.nwb", "JH20211202_c2.nwb"]
-    make_example_traces(dataset, csvfile, "Gg8", main_plot_files)
+    make_example_traces(dataset, csvfile, "3dpi MMZ", main_plot_files)
+
+    # example traces for dox 5dpi MMZ
+    dataset = "dox_5dpi"
+    csvfile_name = "{}_sweep_info.csv".format(dataset)
+    csvfile = os.path.join(
+        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+        dataset,
+        csvfile_name,
+    )
+    main_plot_files = ["JH20220126_c6.nwb", "JH20220111_c4.nwb"]
+    make_example_traces(dataset, csvfile, "Dox 5dpi", main_plot_files)
 
