@@ -1384,7 +1384,15 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
         )
 
     # adds horizontal line + text for main plot scale bar
-    fig.add_shape(type="line", x0=630, y0=y0, x1=655, y1=y0, row=1, col=2)
+    fig.add_shape(
+        type="line",
+        x0=630,
+        y0=y0,
+        x1=655,
+        y1=y0,
+        row=1,
+        col=2 if small_scalebar == False else 1,
+    )
     fig.add_annotation(
         x=642.5,
         y=y_time_text,
@@ -1392,11 +1400,19 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
         showarrow=False,
         font=dict(size=20),
         row=1,
-        col=2,
+        col=2 if small_scalebar == False else 1,
     )
 
     # adds vertical line + text for main plot scale bar
-    fig.add_shape(type="line", x0=655, y0=y0, x1=655, y1=y1, row=1, col=2)
+    fig.add_shape(
+        type="line",
+        x0=655,
+        y0=y0,
+        x1=655,
+        y1=y1,
+        row=1,
+        col=2 if small_scalebar == False else 1,
+    )
 
     fig.add_annotation(
         x=675,
@@ -1405,7 +1421,7 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
         showarrow=False,
         font=dict(size=20),
         row=1,
-        col=2,
+        col=2 if small_scalebar == False else 1,
     )
 
     fig.update_xaxes(
@@ -1425,8 +1441,9 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
         font_family="Arial",
         legend=dict(font=dict(family="Arial", size=26)),
         plot_bgcolor="rgba(0,0,0,0)",
-        width=1200,
+        width=1200 if small_scalebar == False else 600,
         height=300,
+        showlegend=False if small_scalebar == True else True,
     )
 
     noaxes = go.Figure(fig)
