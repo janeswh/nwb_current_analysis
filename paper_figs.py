@@ -154,6 +154,46 @@ def get_single_drug_traces(cell):
     return drug_trace
 
 
+def make_example_traces(dataset, csvfile, genotype, main_plot_files):
+    """
+    Makes plotting traces without inset plots.
+    """
+    main_type_names = [
+        "{} cell 1".format(genotype),
+        "{} cell 2".format(genotype),
+    ]
+    ephys_traces_plotted = pd.DataFrame()
+    # gets the ephys traces for main plot cells
+    main_ephys_traces = []
+    for file in main_plot_files:
+        cell = get_single_cell(dataset, csvfile, file)
+        traces, annotation_values = get_single_cell_traces(cell)
+        main_ephys_traces.append(traces)
+
+    # makes the plotting traces for main plot
+    main_plot_traces = []
+    for count, trace in enumerate(main_ephys_traces):
+        plot_trace = make_one_plot_trace(
+            main_plot_files[count], trace, main_type_names[count]
+        )
+        main_plot_traces.append(plot_trace)
+        plotted_trace = pd.DataFrame(
+            {main_type_names[count]: plot_trace["y"]}, index=plot_trace["x"]
+        )
+        ephys_traces_plotted = pd.concat(
+            [ephys_traces_plotted, plotted_trace], axis=1
+        )
+    fig = plot_example_traces(genotype, main_plot_traces)
+    new_save_example_traces_figs(fig, ephys_traces_plotted, "3dpi_MMZ")
+    # save_fig_to_png(
+    #     fig,
+    #     legend=True,
+    #     rows=1,
+    #     cols=2,
+    #     png_filename="3dpi_MMZ_example_traces.png",
+    # )
+
+
 def make_inset_plot(
     dataset, csvfile, genotype, main_plot_files, inset_plot_file
 ):
@@ -278,13 +318,13 @@ def make_power_curves(dataset, csvfile, genotype, file_name):
 
 
 if __name__ == "__main__":
-    dataset = "non-injected"
-    csvfile_name = "{}_sweep_info.csv".format(dataset)
-    csvfile = os.path.join(
-        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-        dataset,
-        csvfile_name,
-    )
+    # dataset = "non-injected"
+    # csvfile_name = "{}_sweep_info.csv".format(dataset)
+    # csvfile = os.path.join(
+    #     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+    #     dataset,
+    #     csvfile_name,
+    # )
 
     # # inset plot for Gg8, list big response cell first
     # main_plot_files = ["JH20210923_c2.nwb", "JH20210922_c1.nwb"]
@@ -304,5 +344,17 @@ if __name__ == "__main__":
 
     # plot example response traces and power curve amplitudes for one OMP cell
     # JH20211103_c3
-    make_power_curves(dataset, csvfile, "OMP", "JH20211103_c3.nwb")
+    # make_power_curves(dataset, csvfile, "OMP", "JH20211103_c3.nwb")
+
+    # example traces for 3dpi MMZ
+
+    dataset = "3dpi"
+    csvfile_name = "{}_sweep_info.csv".format(dataset)
+    csvfile = os.path.join(
+        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+        dataset,
+        csvfile_name,
+    )
+    main_plot_files = ["JH20211202_c1.nwb", "JH20211202_c2.nwb"]
+    make_example_traces(dataset, csvfile, "Gg8", main_plot_files)
 

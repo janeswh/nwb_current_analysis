@@ -7,7 +7,7 @@ from plotly.graph_objects import Layout
 from plotly.subplots import make_subplots
 import plotly.io as pio
 
-pio.kaleido.scope.default_scale = 5
+pio.kaleido.scope.default_scale = 2
 pio.kaleido.scope.default_format = "png"
 from scipy.stats import sem
 from collections import defaultdict
@@ -840,6 +840,24 @@ def make_inset_plot_fig(
     return inset_plot, inset_plot_noaxes
 
 
+def new_save_example_traces_figs(fig, ephys_traces, type):
+    """
+    Saves the example traces no axes figs as static png file. Also saves the
+    ephys traces used to plot the figures.
+    """
+
+    if not os.path.exists(FileSettings.PAPER_FIGURES_FOLDER):
+        os.makedirs(FileSettings.PAPER_FIGURES_FOLDER)
+
+    filename = f"{type}_example_traces.png"
+
+    fig.write_image(os.path.join(FileSettings.PAPER_FIGURES_FOLDER, filename))
+
+    csv_filename = f"{type}_example_traces.csv"
+    path = os.path.join(FileSettings.PAPER_FIGURES_FOLDER, csv_filename)
+    ephys_traces.to_csv(path, float_format="%8.4f")
+
+
 def save_example_traces_figs(axes, noaxes, genotype):
     """
     Saves the example traces figs as static png file
@@ -1319,3 +1337,103 @@ def save_power_curve(genotype, cell_name, fig):
     filename = "{}_{}_power_curve.png".format(cell_name, genotype)
 
     fig.write_image(os.path.join(FileSettings.PAPER_FIGURES_FOLDER, filename))
+
+
+def plot_example_traces(genotype, traces):
+    """
+    Plots example traces without insets.
+    """
+    fig = make_subplots(rows=1, cols=len(traces), shared_yaxes=True)
+    for count, trace in enumerate(traces):
+        fig.add_trace(trace, row=1, col=count + 1)
+
+        # adds line for light stim
+        fig.add_shape(
+            type="rect",
+            x0=520,
+            y0=50,
+            x1=521,
+            y1=100,
+            line=dict(color="#33F7FF"),
+            fillcolor="#33F7FF",
+            row=1,
+            col=count + 1,
+        )
+
+    # adds horizontal line + text for main plot scale bar
+    fig.add_shape(type="line", x0=630, y0=-600, x1=655, y1=-600, row=1, col=2)
+    fig.add_annotation(
+        x=642.5,
+        y=-725,
+        text="25 ms",
+        showarrow=False,
+        font=dict(size=20),
+        row=1,
+        col=2,
+    )
+
+    # adds vertical line + text for main plot scale bar
+    fig.add_shape(type="line", x0=655, y0=-600, x1=655, y1=-400, row=1, col=2)
+
+    fig.add_annotation(
+        x=675,
+        y=-500,
+        text="200 pA",
+        showarrow=False,
+        font=dict(size=20),
+        row=1,
+        col=2,
+    )
+
+    fig.update_xaxes(
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+        gridcolor="black",
+        ticks="outside",
+        tick0=520,
+        dtick=10,
+    )
+    fig.update_yaxes(
+        showline=True, linewidth=1, gridcolor="black", linecolor="black",
+    )
+
+    fig.update_layout(
+        font_family="Arial",
+        legend=dict(font=dict(family="Arial", size=26)),
+        plot_bgcolor="rgba(0,0,0,0)",
+        width=1200,
+        height=300,
+    )
+
+    noaxes = go.Figure(fig)
+    noaxes.update_xaxes(showgrid=False, visible=False)
+    noaxes.update_yaxes(showgrid=False, visible=False)
+
+    return noaxes
+
+
+def save_fig_to_png(fig, legend, rows, cols, png_filename):
+    """
+    Formats a plot made for html to make it appropriate for png/paper figs
+    """
+    # set font size and image wize
+    fig.update_layout(
+        font_family="Arial",
+        legend=dict(font=dict(family="Arial", size=26)),
+        font=dict(family="Arial", size=26),
+        showlegend=legend,
+        width=cols * 500
+        if legend == False
+        else cols * 500 + 200,  # each subplot counts as 500
+        height=rows * 600,  # each row is 600
+        title="",
+    )
+
+    fig.for_each_annotation(
+        lambda a: a.update(font=dict(family="Arial", size=26))
+    )
+
+    fig.write_image(
+        os.path.join(FileSettings.PAPER_FIGURES_FOLDER, png_filename)
+    )
