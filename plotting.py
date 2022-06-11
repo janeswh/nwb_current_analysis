@@ -15,6 +15,7 @@ import plotly.io as pio
 from file_settings import FileSettings
 
 pio.renderers.default = "browser"
+pio.templates.default = "simple_white"
 import pdb
 
 

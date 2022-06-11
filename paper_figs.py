@@ -315,6 +315,8 @@ def make_power_curves(dataset, csvfile, genotype, file_name):
         cell.mean_trace_df, cell.sweep_analysis_values
     )
 
+    # change only the Time (ms) annotation to have more room
+    power_curve_traces.layout.annotations[5].yshift = -50
     save_power_curve_traces(genotype, cell.cell_name, power_curve_traces)
 
     power_curve_fig = graph_power_curve(
@@ -325,13 +327,13 @@ def make_power_curves(dataset, csvfile, genotype, file_name):
 
 
 if __name__ == "__main__":
-    # dataset = "non-injected"
-    # csvfile_name = "{}_sweep_info.csv".format(dataset)
-    # csvfile = os.path.join(
-    #     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-    #     dataset,
-    #     csvfile_name,
-    # )
+    dataset = "non-injected"
+    csvfile_name = "{}_sweep_info.csv".format(dataset)
+    csvfile = os.path.join(
+        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+        dataset,
+        csvfile_name,
+    )
 
     # # inset plot for Gg8, list big response cell first
     # main_plot_files = ["JH20210923_c2.nwb", "JH20210922_c1.nwb"]
@@ -351,28 +353,28 @@ if __name__ == "__main__":
 
     # plot example response traces and power curve amplitudes for one OMP cell
     # JH20211103_c3
-    # make_power_curves(dataset, csvfile, "OMP", "JH20211103_c3.nwb")
+    make_power_curves(dataset, csvfile, "OMP", "JH20211103_c3.nwb")
 
-    # example traces for 3dpi MMZ
+    # # example traces for 3dpi MMZ
 
-    dataset = "3dpi"
-    csvfile_name = "{}_sweep_info.csv".format(dataset)
-    csvfile = os.path.join(
-        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-        dataset,
-        csvfile_name,
-    )
-    main_plot_files = ["JH20211202_c1.nwb", "JH20211202_c2.nwb"]
-    make_example_traces(dataset, csvfile, "3 dpi MMZ", main_plot_files)
+    # dataset = "3dpi"
+    # csvfile_name = "{}_sweep_info.csv".format(dataset)
+    # csvfile = os.path.join(
+    #     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+    #     dataset,
+    #     csvfile_name,
+    # )
+    # main_plot_files = ["JH20211202_c1.nwb", "JH20211202_c2.nwb"]
+    # make_example_traces(dataset, csvfile, "3 dpi MMZ", main_plot_files)
 
-    # example traces for dox 5dpi MMZ
-    dataset = "dox_5dpi"
-    csvfile_name = "{}_sweep_info.csv".format(dataset)
-    csvfile = os.path.join(
-        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-        dataset,
-        csvfile_name,
-    )
-    main_plot_files = ["JH20220111_c4.nwb"]
-    make_example_traces(dataset, csvfile, "Dox 5 dpi", main_plot_files)
+    # # example traces for dox 5dpi MMZ
+    # dataset = "dox_5dpi"
+    # csvfile_name = "{}_sweep_info.csv".format(dataset)
+    # csvfile = os.path.join(
+    #     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+    #     dataset,
+    #     csvfile_name,
+    # )
+    # main_plot_files = ["JH20220111_c4.nwb"]
+    # make_example_traces(dataset, csvfile, "Dox 5 dpi", main_plot_files)
 
