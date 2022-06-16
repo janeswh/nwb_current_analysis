@@ -904,7 +904,7 @@ def plot_oscillation_sweep(trace):
     )
     fig.add_annotation(
         x=8500,
-        y=-46.45,
+        y=-46.55,
         # yshift=-20,
         text="1 s",
         showarrow=False,
@@ -917,7 +917,7 @@ def plot_oscillation_sweep(trace):
     fig.add_annotation(
         x=9000,
         y=-45,
-        xshift=40,
+        xshift=30,
         text="2 mV",
         showarrow=False,
         # textangle=-90,
@@ -941,8 +941,8 @@ def plot_oscillation_sweep(trace):
     # add text annotation for Vr
     fig.add_annotation(
         x=5400,
-        y=to_plot[5400] + 0.5,
-        yshift=40,
+        y=to_plot[5400] + 0.25,
+        yshift=60,
         xshift=-10,
         text="{} mV".format(round(to_plot[5400])),
         showarrow=False,
@@ -952,8 +952,8 @@ def plot_oscillation_sweep(trace):
     fig.update_layout(
         font_family="Arial",
         showlegend=False,
-        width=1200,
-        height=600,
+        width=600,
+        height=400,
         plot_bgcolor="rgba(0,0,0,0)",
     )
     fig.update_xaxes(showgrid=False, visible=False)
