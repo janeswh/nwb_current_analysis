@@ -883,6 +883,85 @@ def save_example_traces_figs(axes, noaxes, genotype):
     )
 
 
+def plot_oscillation_sweep(trace):
+    to_plot = trace[5000:10000]
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=to_plot.index,
+            y=to_plot,
+            # name=type,
+            mode="lines",
+            line=dict(color="#414145", width=4),
+            # legendgroup=duration,
+        )
+    )
+
+    # adds horizontal line + text for main spikes scale bar
+    fig.add_shape(
+        type="line", x0=8000, y0=-46, x1=9000, y1=-46,
+    )
+    fig.add_annotation(
+        x=8500,
+        y=-46.45,
+        # yshift=-20,
+        text="1 s",
+        showarrow=False,
+        font=dict(size=20),
+    )
+
+    # adds vertical line + text for main spikes scale bar
+    fig.add_shape(type="line", x0=9000, y0=-46, x1=9000, y1=-44)
+
+    fig.add_annotation(
+        x=9000,
+        y=-45,
+        xshift=40,
+        text="2 mV",
+        showarrow=False,
+        # textangle=-90,
+        font=dict(size=20),
+    )
+
+    # add arrow annotation for Vr
+    fig.add_annotation(
+        x=5400,
+        y=to_plot[5400],
+        # xshift=25,
+        yshift=10,
+        # text="{} mV".format(round(to_plot[450])),
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1,
+        arrowwidth=2,
+        ay=-45,
+    )
+
+    # add text annotation for Vr
+    fig.add_annotation(
+        x=5400,
+        y=to_plot[5400] + 0.5,
+        yshift=40,
+        xshift=-10,
+        text="{} mV".format(round(to_plot[5400])),
+        showarrow=False,
+        font=dict(size=20),
+    )
+    fig.update_layout(template="plotly")
+    fig.update_layout(
+        font_family="Arial",
+        showlegend=False,
+        width=1200,
+        height=600,
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    fig.update_xaxes(showgrid=False, visible=False)
+    fig.update_yaxes(showgrid=False, visible=False)
+
+    return fig
+
+
 def plot_spike_sweeps(genotype, trace):
     """
     Plots a single spike sweep to show STC physiology
@@ -907,13 +986,8 @@ def plot_spike_sweeps(genotype, trace):
         go.Scatter(
             x=to_plot.index,
             y=to_plot,
-            # name=type_names[0],
             mode="lines",
-            line=dict(
-                # color=color[genotype],
-                color="#414145",
-                width=2,
-            ),
+            line=dict(color="#414145", width=2,),
             # legendgroup=duration,
         ),
         row=1,

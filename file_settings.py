@@ -5,7 +5,7 @@ from enum import Enum
 class FileSettings(object):
 
     DATA_FOLDER = "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/data"
-    IGNORED = {"esc_unusable"}
+    IGNORED = {"esc_unusable", "extra"}
     TABLES_FOLDER = (
         "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables"
     )

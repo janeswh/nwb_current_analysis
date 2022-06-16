@@ -102,6 +102,8 @@ def get_single_cell_traces(
     # 3 makes a dict for each cell, with stim condition as keys and all sweeps per stimulus as values
     if traces_type == "spikes":
         cell.make_spikes_dict()
+    elif traces_type == "oscillations":
+        cell.make_resting_dict()
     else:
         cell.make_sweeps_dict()
 
@@ -281,12 +283,43 @@ def make_spike_traces(dataset, csvfile, genotype, file_name, sweep_number):
     """
     cell = get_single_cell(dataset, csvfile, file_name)
     trace, annotation_values = get_single_cell_traces(
-        cell, traces_type="spikes", sweep_number=4
+        cell, traces_type="spikes", sweep_number=sweep_number
     )
     axes, noaxes = plot_spike_sweeps(genotype, trace)
+    pdb.set_trace()
     save_spike_figs(axes, noaxes, cell, genotype)
 
     print("Finished saving spike plots")
+
+
+def make_oscillation_trace(
+    dataset, csvfile, genotype, file_name, sweep_number
+):
+    """
+    Plots a single IC trace to demonstrate STC oscillation, uses ibw
+    """
+    path_to_file = os.path.join(FileSettings.DATA_FOLDER, "extra", file_name)
+    data_raw = IgorIO(filename=path_to_file)
+    data_neo = data_raw.read_block()
+    data_neo_array = data_neo.segments[0].analogsignals[0]
+    data_df = pd.DataFrame(data_neo_array.as_array().squeeze())
+
+    # filter traces
+    traces_filtered = elephant.signal_processing.butter(
+        data_df.T, lowpass_freq=500, fs=FS * 1000
+    )
+
+    traces_filtered = pd.DataFrame(traces_filtered).T
+
+    time = np.arange(0, len(data_df) / FS, 1 / FS)
+    traces_filtered.index = time
+    sweep_to_plot = traces_filtered[sweep_number]
+    fig = plot_oscillation_sweep(sweep_to_plot)
+    new_save_example_traces_figs(fig, sweep_to_plot, "oscillation")
+
+    pdb.set_trace()
+
+    print("Finished saving oscillation plot")
 
 
 def make_power_curves(dataset, csvfile, genotype, file_name):
@@ -351,9 +384,14 @@ if __name__ == "__main__":
     # # plot one IC trace to show STC spikes, JH20211130_c1 sweep 4 (Gg8)
     # make_spike_traces(dataset, csvfile, "Gg8", "JH20211130_c1.nwb", 4)
 
-    # plot example response traces and power curve amplitudes for one OMP cell
-    # JH20211103_c3
-    make_power_curves(dataset, csvfile, "OMP", "JH20211103_c3.nwb")
+    # plot one IC trace to show STC oscillations, JH20211007_c1 sweep 1 (OMP)
+    make_oscillation_trace(
+        dataset, csvfile, "Gg8", "JH202111007_c1_oscillation.ibw", 1
+    )
+
+    # # plot example response traces and power curve amplitudes for one OMP cell
+    # # JH20211103_c3
+    # make_power_curves(dataset, csvfile, "OMP", "JH20211103_c3.nwb")
 
     # # example traces for 3dpi MMZ
 
