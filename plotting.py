@@ -893,7 +893,7 @@ def plot_oscillation_sweep(trace):
             y=to_plot,
             # name=type,
             mode="lines",
-            line=dict(color="#414145", width=4),
+            line=dict(color="#414145", width=1),
             # legendgroup=duration,
         )
     )
