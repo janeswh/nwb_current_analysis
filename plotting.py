@@ -576,7 +576,11 @@ def plot_annotated_trace(trace, annotation_values, genotype):
 
     # adds horizontal line + text for scale bar
     annotated_plot.add_shape(
-        type="line", x0=527, y0=-300, x1=529, y1=-300,
+        type="line",
+        x0=527,
+        y0=-300,
+        x1=529,
+        y1=-300,
     )
     annotated_plot.add_annotation(
         x=528,
@@ -600,7 +604,12 @@ def plot_annotated_trace(trace, annotation_values, genotype):
         font=dict(size=20),
     )
 
-    annotated_plot.update_layout(font=dict(family="Arial",), showlegend=False)
+    annotated_plot.update_layout(
+        font=dict(
+            family="Arial",
+        ),
+        showlegend=False,
+    )
 
     annotated_plot_noaxes = go.Figure(annotated_plot)
     annotated_plot_noaxes.update_xaxes(showgrid=False, visible=False)
@@ -638,9 +647,9 @@ def save_annotated_figs(axes, noaxes, cell, genotype):
 
 def make_one_plot_trace(file_name, cell_trace, type, inset=False):
     """
-    Makes the trace data used to plot later. "type" parameter determines the 
+    Makes the trace data used to plot later. "type" parameter determines the
     color of the trace
-    
+
     """
     intensity, duration = FileSettings.SELECTED_CONDITION
 
@@ -722,7 +731,9 @@ def make_inset_plot_fig(
     # sets background color to white
     layout = go.Layout(
         plot_bgcolor="rgba(0,0,0,0)",
-        yaxis=dict(range=[-700, 150],),
+        yaxis=dict(
+            range=[-700, 150],
+        ),
         xaxis2=dict(domain=[0.55, 0.95], anchor="y2"),
         yaxis2=dict(domain=[0.1, 0.5], anchor="x2"),
     )
@@ -742,7 +753,11 @@ def make_inset_plot_fig(
 
     # adds horizontal line + text for main plot scale bar
     inset_plot.add_shape(
-        type="line", x0=530, y0=-600, x1=555, y1=-600,
+        type="line",
+        x0=530,
+        y0=-600,
+        x1=555,
+        y1=-600,
     )
     inset_plot.add_annotation(
         x=542.5, y=-650, text="25 ms", showarrow=False, font=dict(size=20)
@@ -826,7 +841,10 @@ def make_inset_plot_fig(
         dtick=10,
     )
     inset_plot.update_yaxes(
-        showline=True, linewidth=1, gridcolor="black", linecolor="black",
+        showline=True,
+        linewidth=1,
+        gridcolor="black",
+        linecolor="black",
     )
 
     inset_plot.update_layout(
@@ -900,7 +918,11 @@ def plot_oscillation_sweep(trace):
 
     # adds horizontal line + text for main spikes scale bar
     fig.add_shape(
-        type="line", x0=8000, y0=-46, x1=9000, y1=-46,
+        type="line",
+        x0=8000,
+        y0=-46,
+        x1=9000,
+        y1=-46,
     )
     fig.add_annotation(
         x=8500,
@@ -987,7 +1009,10 @@ def plot_spike_sweeps(genotype, trace):
             x=to_plot.index,
             y=to_plot,
             mode="lines",
-            line=dict(color="#414145", width=2,),
+            line=dict(
+                color="#414145",
+                width=2,
+            ),
             # legendgroup=duration,
         ),
         row=1,
@@ -1023,7 +1048,10 @@ def plot_spike_sweeps(genotype, trace):
     )
 
     spikes_plots.update_yaxes(
-        showline=True, linewidth=1, gridcolor="black", linecolor="black",
+        showline=True,
+        linewidth=1,
+        gridcolor="black",
+        linecolor="black",
     )
 
     # add shaded box around spikes that we're zooming in on
@@ -1055,7 +1083,13 @@ def plot_spike_sweeps(genotype, trace):
 
     # adds horizontal line + text for main spikes scale bar
     spikes_plots.add_shape(
-        type="line", xref="x1", yref="y1", x0=1400, y0=-10, x1=1600, y1=-10,
+        type="line",
+        xref="x1",
+        yref="y1",
+        x0=1400,
+        y0=-10,
+        x1=1600,
+        y1=-10,
     )
     spikes_plots.add_annotation(
         xref="x1",
@@ -1115,7 +1149,13 @@ def plot_spike_sweeps(genotype, trace):
 
     # adds horizontal line + text for zoomed spikes scale bar
     spikes_plots.add_shape(
-        type="line", xref="x2", yref="y2", x0=612.5, y0=0, x1=637.5, y1=0,
+        type="line",
+        xref="x2",
+        yref="y2",
+        x0=612.5,
+        y0=0,
+        x1=637.5,
+        y1=0,
     )
     spikes_plots.add_annotation(
         xref="x2",
@@ -1187,7 +1227,7 @@ def save_spike_figs(axes, noaxes, cell, genotype):
 
 def plot_power_curve_traces(mean_trace_df, sweeps_df):
     """
-    Plots the baseline-subtracted mean trace for each stimulus condition around the response time, 
+    Plots the baseline-subtracted mean trace for each stimulus condition around the response time,
     one subplot for each duration, if applicable. Does this for one cell.
     """
 
@@ -1304,10 +1344,10 @@ def save_power_curve_traces(genotype, cell_name, fig):
 
 def graph_power_curve(power_curve_stats, sweep_analysis_values):
     """
-        do a loop through available durations and intensities instead of hard
-        coding. maybe need MultiIndex after all?? Put power curve + all stats 
-        measurements in subplots
-        """
+    do a loop through available durations and intensities instead of hard
+    coding. maybe need MultiIndex after all?? Put power curve + all stats
+    measurements in subplots
+    """
 
     intensities = sweep_analysis_values["Light Intensity"].unique()
     durations = sweep_analysis_values["Light Duration"].unique()
@@ -1442,6 +1482,7 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
         current_text = "20 pA"
 
     fig = make_subplots(rows=1, cols=len(traces), shared_yaxes=True)
+    fig.update_layout(template="plotly")
     for count, trace in enumerate(traces):
         fig.add_trace(trace, row=1, col=count + 1)
 
@@ -1490,7 +1531,7 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
     )
 
     fig.add_annotation(
-        x=675,
+        x=670,
         y=y_current_text,
         text=current_text,
         showarrow=False,
@@ -1509,7 +1550,10 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
         dtick=10,
     )
     fig.update_yaxes(
-        showline=True, linewidth=1, gridcolor="black", linecolor="black",
+        showline=True,
+        linewidth=1,
+        gridcolor="black",
+        linecolor="black",
     )
 
     fig.update_layout(
