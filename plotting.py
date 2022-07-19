@@ -479,6 +479,7 @@ def plot_annotated_trace(trace, annotation_values, genotype):
     # trace_to_plot.to_csv("annotated_trace.csv")
 
     annotated_plot = go.Figure(layout=layout)
+    annotated_plot.update_layout(template="plotly")
 
     annotated_plot.add_trace(
         go.Scatter(
@@ -739,6 +740,7 @@ def make_inset_plot_fig(
     )
 
     inset_plot = go.Figure(data=data, layout=layout)
+    inset_plot.update_layout(template="plotly")
 
     # adds line for light stim
     inset_plot.add_shape(
@@ -905,6 +907,7 @@ def plot_oscillation_sweep(trace):
     to_plot = trace[5000:10000]
 
     fig = go.Figure()
+    fig.update_layout(template="plotly")
     fig.add_trace(
         go.Scatter(
             x=to_plot.index,
@@ -997,6 +1000,7 @@ def plot_spike_sweeps(genotype, trace):
     spikes_plots = make_subplots(
         rows=1, cols=2, column_widths=[0.7, 0.3], horizontal_spacing=0.05
     )
+    spikes_plots.update_layout(template="plotly")
 
     # the traces used in this figure can be saved in csv using:
     # to_plot.csv("STC_spike_trace.csv")
@@ -1531,7 +1535,7 @@ def plot_example_traces(genotype, traces, small_scalebar=False):
     )
 
     fig.add_annotation(
-        x=670,
+        x=675,
         y=y_current_text,
         text=current_text,
         showarrow=False,

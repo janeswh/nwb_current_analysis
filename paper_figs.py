@@ -360,13 +360,13 @@ def make_power_curves(dataset, csvfile, genotype, file_name):
 
 
 if __name__ == "__main__":
-    dataset = "non-injected"
-    csvfile_name = "{}_sweep_info.csv".format(dataset)
-    csvfile = os.path.join(
-        "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-        dataset,
-        csvfile_name,
-    )
+    # dataset = "non-injected"
+    # csvfile_name = "{}_sweep_info.csv".format(dataset)
+    # csvfile = os.path.join(
+    #     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+    #     dataset,
+    #     csvfile_name,
+    # )
 
     # # inset plot for Gg8, list big response cell first
     # main_plot_files = ["JH20210923_c2.nwb", "JH20210922_c1.nwb"]
@@ -395,23 +395,23 @@ if __name__ == "__main__":
 
     # # example traces for 3dpi MMZ
 
-    # dataset = "3dpi"
-    # csvfile_name = "{}_sweep_info.csv".format(dataset)
-    # csvfile = os.path.join(
-    #     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
-    #     dataset,
-    #     csvfile_name,
-    # )
-    # main_plot_files = ["JH20211202_c1.nwb", "JH20211202_c2.nwb"]
-    # make_example_traces(dataset, csvfile, "3 dpi MMZ", main_plot_files)
-
-    # example traces for dox 5dpi MMZ
-    dataset = "dox_5dpi"
+    dataset = "3dpi"
     csvfile_name = "{}_sweep_info.csv".format(dataset)
     csvfile = os.path.join(
         "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
         dataset,
         csvfile_name,
     )
-    main_plot_files = ["JH20220111_c4.nwb"]
-    make_example_traces(dataset, csvfile, "Dox 5 dpi", main_plot_files)
+    main_plot_files = ["JH20211202_c1.nwb", "JH20211202_c2.nwb"]
+    make_example_traces(dataset, csvfile, "3 dpi MMZ", main_plot_files)
+
+    # # example traces for dox 5dpi MMZ
+    # dataset = "dox_5dpi"
+    # csvfile_name = "{}_sweep_info.csv".format(dataset)
+    # csvfile = os.path.join(
+    #     "/home/jhuang/Documents/phd_projects/MMZ_STC_dataset/tables",
+    #     dataset,
+    #     csvfile_name,
+    # )
+    # main_plot_files = ["JH20220111_c4.nwb"]
+    # make_example_traces(dataset, csvfile, "Dox 5 dpi", main_plot_files)
