@@ -9,7 +9,7 @@ import pdb
 
 
 def get_datasets():
-    # dataset_list = ["5dpi"]
+    # dataset_list = ["non-injected"]
     dataset_list = [
         dataset
         for dataset in os.listdir(FileSettings.DATA_FOLDER)
@@ -44,7 +44,7 @@ def run_dataset_analysis(dataset):
             nwbfile_list.append(file)
 
     for file_count, nwbfile_name in enumerate(nwbfile_list):
-        # run_single(dataset, csvfile, nwbfile_name)
+        run_single(dataset, csvfile, nwbfile_name)
         print(
             "Analysis for {} done, #{}/{} cells".format(
                 nwbfile_name, file_count + 1, len(nwbfile_list)
@@ -58,7 +58,7 @@ def main():
 
     for dataset_count, dataset in enumerate(dataset_list):
         print("***Starting analysis for {} dataset.***".format(dataset))
-        run_dataset_analysis(dataset)
+        # run_dataset_analysis(dataset)
         genotypes_list = get_genotypes(dataset)
         monosyn_cell_counts = get_genotype_summary(dataset, genotypes_list)
 
@@ -77,4 +77,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-

@@ -194,7 +194,7 @@ def save_summary_stats_fig(genotype, threshold, fig_folder, fig):
     fig.write_html(path, full_html=False, include_plotlyjs="cdn")
 
 
-def plot_selected_averages(threshold, selected_avgs):
+def plot_selected_averages(selected_condition, threshold, selected_avgs):
 
     genotype_color = {"OMP": "#ff9300", "Gg8": "#7a81ff"}
 
@@ -202,12 +202,17 @@ def plot_selected_averages(threshold, selected_avgs):
 
     genotypes = selected_avgs["Genotype"].unique()
 
-    # pdb.set_trace()
     for genotype in genotypes:
 
         x_datasets = selected_avgs.loc[selected_avgs["Genotype"] == genotype][
             "Dataset"
         ]
+
+        test = selected_avgs.loc[selected_avgs["Genotype"] == genotype][
+            "Mean Trace Peak (pA)"
+        ].squeeze()
+        if isinstance(test, float):
+            pdb.set_trace()
 
         # mean trace peak amplitude
         selected_summary_fig.add_trace(
@@ -351,21 +356,30 @@ def plot_selected_averages(threshold, selected_avgs):
         else names.add(trace.name)
     )
 
+    selected_cond_str = ",".join(selected_condition)
     selected_summary_fig.update_layout(
         legend_title_text="Genotype",
         title_text=(
-            "OMP vs. Gg8, {} ms onset latency threshold".format(threshold)
+            f"OMP vs. Gg8, {threshold} ms onset latency threshold, {selected_cond_str} light stim"
         ),
         title_x=0.5,
     )
 
     # selected_summary_fig.show()
+
     return selected_summary_fig
 
 
-def save_selected_summary_fig(threshold, selected_summary_fig):
+def save_selected_summary_fig(
+    light, duration, threshold, selected_summary_fig
+):
 
-    html_filename = "{}_ms_threshold_datasets_summary.html".format(threshold)
+    duration = duration.replace(" ", "")
+    light = light.replace(" ", "")
+    html_filename = (
+        f"{light}{duration}_{threshold}_ms_threshold_datasets_summary.html"
+    )
+
     path = os.path.join(FileSettings.FIGURES_FOLDER, html_filename)
 
     selected_summary_fig.write_html(
@@ -374,6 +388,7 @@ def save_selected_summary_fig(threshold, selected_summary_fig):
 
 
 def plot_response_counts(response_counts_dict):
+
     # response/no response is a trace
     thresholds = FileSettings.THRESHOLD_LIST.copy()
     thresholds[0] = "nothresh"
@@ -390,39 +405,56 @@ def plot_response_counts(response_counts_dict):
 
     response_colors = {"no response": "#A7BBC7", "response": "#293B5F"}
     response_counts_fig = make_subplots(
-        rows=len(thresholds), cols=1, x_title="Dataset/Genotype"
+        rows=len(thresholds),
+        cols=len(FileSettings.SELECTED_CONDITION),
+        subplot_titles=[
+            ",".join(item) for item in FileSettings.SELECTED_CONDITION
+        ],
+        x_title="Dataset/Genotype",
     )
 
     # rearranges threshold for better plotting order
     thresholds.reverse()
     thresholds.insert(0, thresholds.pop(thresholds.index("nothresh")))
+
     for count, threshold in enumerate(thresholds):
-        for response_type in response_counts_dict[threshold].keys():
 
-            # pdb.set_trace()
+        for ct, selected_condition in enumerate(
+            response_counts_dict[threshold].keys()
+        ):
 
-            x_axis = response_counts_dict[threshold]["response"].columns
-            response_counts_fig.add_trace(
-                go.Bar(
-                    x=x_axis,
-                    y=response_counts_dict[threshold][response_type].squeeze(),
-                    name=response_type,
-                    marker_color=response_colors[response_type],
-                    legendgroup=response_type,
-                ),
-                row=count + 1,
-                col=1,
-            )
+            for response_type in response_counts_dict[threshold][
+                selected_condition
+            ].keys():
 
-            response_counts_fig.update_yaxes(
-                title_text="{} ms latency cutoff cell count".format(threshold)
-                if threshold != "nothresh"
-                else "no onset latency cutoff cell count",
-                row=count + 1,
-                col=1,
-            )
+                x_axis = response_counts_dict[threshold][selected_condition][
+                    "response"
+                ].columns
+                response_counts_fig.add_trace(
+                    go.Bar(
+                        x=x_axis,
+                        y=response_counts_dict[threshold][selected_condition][
+                            response_type
+                        ].squeeze(),
+                        name=response_type,
+                        marker_color=response_colors[response_type],
+                        legendgroup=response_type,
+                    ),
+                    row=count + 1,
+                    col=ct + 1,
+                )
 
-            response_counts_fig.update_layout(barmode="stack")
+                response_counts_fig.update_yaxes(
+                    title_text="{} ms latency cutoff cell count".format(
+                        threshold
+                    )
+                    if threshold != "nothresh"
+                    else "no onset latency cutoff cell count",
+                    row=count + 1,
+                    col=ct + 1,
+                )
+
+                response_counts_fig.update_layout(barmode="stack")
 
     # below is code from stack overflow to hide duplicate legends
     names = set()
@@ -442,7 +474,8 @@ def plot_response_counts(response_counts_dict):
         ),
         title_x=0.5,
     )
-    response_counts_fig.show()
+    # response_counts_fig.show()
+
     return response_counts_fig
 
 
