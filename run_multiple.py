@@ -58,7 +58,7 @@ def main():
 
     for dataset_count, dataset in enumerate(dataset_list):
         print("***Starting analysis for {} dataset.***".format(dataset))
-        # run_dataset_analysis(dataset)
+        run_dataset_analysis(dataset)
         genotypes_list = get_genotypes(dataset)
         monosyn_cell_counts = get_genotype_summary(dataset, genotypes_list)
 
